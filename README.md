@@ -9,4 +9,5 @@
 ## Programs in src/ are:
 
 1. rtree_example.cc: make some random points, then query for how many points are found in a certain box. This example
-   does suggest 
+   does suggest that we should simply add pair<point,std::size_t> as a data member to a custom diploid for this sort of
+   simulation
