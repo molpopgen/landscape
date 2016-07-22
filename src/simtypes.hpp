@@ -1,6 +1,8 @@
 #ifndef LANDSCAPE_SIMTYPES_HPP
 #define LANDSCAPE_SIMTYPES_HPP
 
+#include <limits>
+#include <utility>
 #include <boost/geometry/geometries/point.hpp>
 #include <fwdpp/tags/diploid_tags.hpp>
 
@@ -15,9 +17,16 @@ struct diploid : public KTfwd::tags::custom_diploid_t
  * that it gets "dispatched" properly.
  */
 {
-    std::size_t first; //first gamete
-    std::size_t second;//second gamete
+    using first_type = std::size_t;
+    using second_type = std::size_t;
+    first_type first; //first gamete
+    second_type second;//second gamete
     value v;           //location in space & index in population
+    diploid() noexcept : v(std::make_pair(point(std::numeric_limits<double>::quiet_Nan(),
+                                           std::numeric_limits<double>::quiet_Nan()),
+                                     std::numeric_limits<std::size_t>::max()))
+    {
+    }
 };
 
 #endif
