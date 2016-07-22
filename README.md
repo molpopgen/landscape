@@ -1,5 +1,9 @@
 # Landscape simulations using [fwdpp](https://github.com/molpopgen/fwdpp)
 
+## License
+
+GPLv2 or later. 
+
 ## Based on:
 
 * [fwdpp](https://github.com/molpopgen/fwdpp)
