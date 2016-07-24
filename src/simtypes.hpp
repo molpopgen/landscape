@@ -23,8 +23,8 @@ struct diploid : public KTfwd::tags::custom_diploid_t
     second_type second;//second gamete
     value v;           //location in space & index in population
     diploid() noexcept : v(std::make_pair(point(std::numeric_limits<double>::quiet_Nan(),
-                                           std::numeric_limits<double>::quiet_Nan()),
-                                     std::numeric_limits<std::size_t>::max()))
+                                              std::numeric_limits<double>::quiet_Nan()),
+                                              std::numeric_limits<std::size_t>::max()))
     {
     }
 };

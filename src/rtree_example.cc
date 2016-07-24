@@ -46,10 +46,14 @@ using namespace std;
  */
 using point = bg::model::point<double, 2, bg::cs::cartesian>;
 using box = bg::model::box<point>;
-using value = std::pair<point, unsigned>;
+using value = std::pair<point, std::size_t>;
 
 int main(int argc, char ** argv)
 {
+    std::cout << "sizeof point = " << sizeof(point) 
+        << ", sizeof box = " << sizeof(box) 
+        << ", sizeof value = " << sizeof(value) << '\n';
+
     //init random number generator
     KTfwd::GSLrng_t<KTfwd::GSL_RNG_MT19937> rng(101);
 
