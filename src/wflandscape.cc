@@ -108,6 +108,10 @@ int main(int argc, char ** argv)
         pop.neutral,pop.selected,0,rules);
     }
     //At this point, we would do some analysis...
+    //Here, we'll print out each diploid, and
+    //the s for each mutation on each chromosome,
+    //plus its coordinate.  Output will be "tidy",
+    //e.g. ready for dplyr.
     std::cout << "dip x y chrom s\n";
     for(std::size_t i=0; i<pop.diploids.size(); ++i)
     {
