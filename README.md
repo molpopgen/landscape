@@ -12,6 +12,10 @@ GPLv2 or later.
 
 ## Programs in src/ are:
 
+__NOTE:__ these programs are compiled in "debug" mode, allowing extensive checking of correctness of the data structures
+behind the scenes.  Debug mode imposes a big runtime penalty.  "Production" code should be compiled using -DNDEBUG to
+get rid of the debugging blocks.
+
 ### rtree_example.cc: 
 
 This program will make some random points, then query for how many points are found in a certain box. This example
