@@ -68,8 +68,11 @@ int main(int argc, char ** argv)
     }
     //So we can iterate over an rtree, but we have no operator[],
     //which makes some fwdpp-esque things quite inconvenient
-    cout << "iterate over our tree:\n";
-    for( const auto & v : rtree ) cout << v.first.get<0>() << ' ' << v.first.get<1>() << ' ' << v.second << '\n';
+	//The next block will not work with boost < 1.5.9,
+	//so I've commented it out, as Ubuntu/Debian currently
+	//install 1.5.8
+    //cout << "iterate over our tree:\n";
+    //for( const auto & v : rtree ) cout << v.first.get<0>() << ' ' << v.first.get<1>() << ' ' << v.second << '\n';
     //Do a search in our tree:
     vector<value> values;
     box region(point(1.8,1.8),point(2.25,2.25));
