@@ -27,6 +27,22 @@ using rules_type = landscape::WFLandscapeRules<rtree_type>;
 
 int main(int argc, char ** argv)
 {
+    if(argc!=10)
+    {
+        std::cerr << "Incorrect number of arguments.\n"
+                  << "Usage:\n"
+                  << argv[0] << ' '
+                  << "N "
+                  << "theta "
+                  << "rho "
+                  << "s "
+                  << "h "
+                  << "mutrate_to_selected "
+                  << "radius "
+                  << "dispersal "
+                  << "seed\n";
+        exit(0);
+    }
     int argn = 1;
     const unsigned N = atoi(argv[argn++]);
     const double theta = atof(argv[argn++]);
@@ -35,7 +51,7 @@ int main(int argc, char ** argv)
     const double h = atof(argv[argn++]);       //dominance.  Fitnesses will be 1,1+sh,1+2s, so h=1=additive.
     const double mu = atof(argv[argn++]);      //mutation rate to selected variants
     const double radius = atof(argv[argn++]);  //Radius in which to search for mates.
-	const double dispersal = atof(argv[argn++]); //std. deviation in offspring dispersal
+    const double dispersal = atof(argv[argn++]); //std. deviation in offspring dispersal
     const unsigned seed = atoi(argv[argn++]);  //RNG seed.
 
     //per-generation rates
@@ -56,22 +72,22 @@ int main(int argc, char ** argv)
 
     //Assign random points in space to our diploids.
     //The geometry is a square (0,0) to (1,1)
-	rtree_type rtree;
-	for(std::size_t i=0; i<N; ++i)
+    rtree_type rtree;
+    for(std::size_t i=0; i<N; ++i)
     {
         //Yes, I am aware that this does not truly
         //sample uniformly in 2d...
         double x = gsl_ran_flat(rng.get(),0.,1.);
         double y = gsl_ran_flat(rng.get(),0.,1.);
         pop.diploids[i].v = landscape::csdiploid::value(std::make_pair(landscape::csdiploid::point(x,y),i));
-		rtree.insert(pop.diploids[i].v);
+        rtree.insert(pop.diploids[i].v);
     }
 
     //pre-allocate space for a good guess as to the total # mutations
     //expected at equilibrium.
     pop.mutations.reserve(size_t(std::ceil(std::log(2*N)*theta+0.667*theta)));
 
-	rules_type rules(std::move(rtree),radius,dispersal);
+    rules_type rules(std::move(rtree),radius,dispersal);
     for(unsigned generation = 0 ; generation < 10*N ; ++generation )
     {
         double wbar = KTfwd::experimental::sample_diploid(rng.get(),
@@ -90,5 +106,42 @@ int main(int argc, char ** argv)
         std::bind(KTfwd::multiplicative_diploid(),std::placeholders::_1,std::placeholders::_2,
                   std::placeholders::_3,2.),
         pop.neutral,pop.selected,0,rules);
+    }
+    //At this point, we would do some analysis...
+    //Here, we'll print out each diploid, and
+    //the position + s for each mutation on each chromosome,
+    //plus its coordinate.  Output will be "tidy",
+    //e.g. ready for dplyr.
+    std::cout << "dip x y chrom s\n";
+    for(std::size_t i=0; i<pop.diploids.size(); ++i)
+    {
+        auto x = pop.diploids[i].v.first.get<0>();
+        auto y = pop.diploids[i].v.first.get<1>();
+        if(pop.gametes[pop.diploids[i].first].smutations.empty())
+        {
+            std::cout << i << ' ' << x << ' ' << y << " 0 " <<"NA NA" << '\n';
+        }
+        else
+        {
+            for(const auto & m : pop.gametes[pop.diploids[i].first].smutations)
+            {
+                std::cout << i << ' ' << x << ' ' << y << " 0 " 
+                    << pop.mutations[m].pos << ' '
+                    << pop.mutations[m].s << '\n';
+            }
+        }
+        if(pop.gametes[pop.diploids[i].second].smutations.empty())
+        {
+            std::cout << i << ' ' << x << ' ' << y << " 1 " << "NA NA" << '\n';
+        }
+        else
+        {
+            for(const auto & m : pop.gametes[pop.diploids[i].second].smutations)
+            {
+                std::cout << i << ' ' << x << ' ' << y << " 1 " 
+                    << pop.mutations[m].pos << ' ' 
+                    << pop.mutations[m].s << '\n';
+            }
+        }
     }
 }
