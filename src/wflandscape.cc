@@ -107,4 +107,32 @@ int main(int argc, char ** argv)
                   std::placeholders::_3,2.),
         pop.neutral,pop.selected,0,rules);
     }
+    //At this point, we would do some analysis...
+    for(std::size_t i=0; i<pop.diploids.size(); ++i)
+    {
+        auto x = pop.diploids[i].v.first.get<0>();
+        auto y = pop.diploids[i].v.first.get<1>();
+        if(pop.gametes[pop.diploids[i].first].smutations.empty())
+        {
+            std::cout << i << ' ' << x << ' ' << y << " 0 " <<"NA" << '\n';
+        }
+        else
+        {
+            for(const auto & m : pop.gametes[pop.diploids[i].first].smutations)
+            {
+                std::cout << i << ' ' << x << ' ' << y << " 0 " << pop.mutations[m].s << '\n';
+            }
+        }
+        if(pop.gametes[pop.diploids[i].second].smutations.empty())
+        {
+            std::cout << i << ' ' << x << ' ' << y << " 1 " << "NA" << '\n';
+        }
+        else
+        {
+            for(const auto & m : pop.gametes[pop.diploids[i].second].smutations)
+            {
+                std::cout << i << ' ' << x << ' ' << y << " 1 " << pop.mutations[m].s << '\n';
+            }
+        }
+    }
 }
