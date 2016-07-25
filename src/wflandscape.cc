@@ -108,6 +108,7 @@ int main(int argc, char ** argv)
         pop.neutral,pop.selected,0,rules);
     }
     //At this point, we would do some analysis...
+    std::cout << "dip x y chrom s\n";
     for(std::size_t i=0; i<pop.diploids.size(); ++i)
     {
         auto x = pop.diploids[i].v.first.get<0>();
