@@ -32,8 +32,13 @@ struct csdiploid : public KTfwd::tags::custom_diploid_t
                                                 std::numeric_limits<std::size_t>::max()))
     {
     }
+    csdiploid(std::size_t i,std::size_t j) : first(i),second(j),
+        v(std::make_pair(point(std::numeric_limits<double>::quiet_NaN(),
+                               std::numeric_limits<double>::quiet_NaN()),
+                         std::numeric_limits<std::size_t>::max()))
+    {
+    }
 };
-
 /*
  * Our population is a single deme.  The mutation type
  * is KTfwd::popgenmut, from fwdpp/sugar/popgenmut.hpp.
