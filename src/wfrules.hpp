@@ -123,7 +123,7 @@ struct WFLandscapeRules
         double x = (boost::geometry::get<0>(parent1.v.first)+boost::geometry::get<0>(parent2.v.first))/2.0 + gsl_ran_gaussian(r,dispersal);
         //double x = (parent1.v.get<0>()+parent2.v.get<0>())/2.0 + gsl_ran_gaussian(r,dispersal);
         if (x<0.)x=0.;
-        if (x<1.)x=1.;
+        if (x>1.)x=1.;
         double y = (boost::geometry::get<1>(parent1.v.first)+boost::geometry::get<1>(parent2.v.first))/2.0 + gsl_ran_gaussian(r,dispersal);
         if (y<0.)y=0.;
         if (y>1.)y=1.;
