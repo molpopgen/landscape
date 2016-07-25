@@ -4,6 +4,7 @@
 #include <limits>
 #include <utility>
 #include <boost/geometry/geometries/point.hpp>
+#include <boost/geometry/core/cs.hpp>
 #include <fwdpp/tags/diploid_tags.hpp>
 
 namespace bg = boost::geometry;
@@ -22,8 +23,8 @@ struct diploid : public KTfwd::tags::custom_diploid_t
     first_type first; //first gamete
     second_type second;//second gamete
     value v;           //location in space & index in population
-    diploid() noexcept : v(std::make_pair(point(std::numeric_limits<double>::quiet_Nan(),
-                                              std::numeric_limits<double>::quiet_Nan()),
+    diploid() noexcept : v(std::make_pair(point(std::numeric_limits<double>::quiet_NaN(),
+                                              std::numeric_limits<double>::quiet_NaN()),
                                               std::numeric_limits<std::size_t>::max()))
     {
     }
