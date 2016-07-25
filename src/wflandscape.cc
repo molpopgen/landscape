@@ -112,7 +112,7 @@ int main(int argc, char ** argv)
     //the position + s for each mutation on each chromosome,
     //plus its coordinate.  Output will be "tidy",
     //e.g. ready for dplyr.
-    std::cout << "dip x y chrom s\n";
+    std::cout << "dip x y chrom pos s\n";
     for(std::size_t i=0; i<pop.diploids.size(); ++i)
     {
         auto x = pop.diploids[i].v.first.get<0>();
