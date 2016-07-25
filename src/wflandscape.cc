@@ -109,7 +109,7 @@ int main(int argc, char ** argv)
     }
     //At this point, we would do some analysis...
     //Here, we'll print out each diploid, and
-    //the s for each mutation on each chromosome,
+    //the position + s for each mutation on each chromosome,
     //plus its coordinate.  Output will be "tidy",
     //e.g. ready for dplyr.
     std::cout << "dip x y chrom s\n";
@@ -119,24 +119,28 @@ int main(int argc, char ** argv)
         auto y = pop.diploids[i].v.first.get<1>();
         if(pop.gametes[pop.diploids[i].first].smutations.empty())
         {
-            std::cout << i << ' ' << x << ' ' << y << " 0 " <<"NA" << '\n';
+            std::cout << i << ' ' << x << ' ' << y << " 0 " <<"NA NA" << '\n';
         }
         else
         {
             for(const auto & m : pop.gametes[pop.diploids[i].first].smutations)
             {
-                std::cout << i << ' ' << x << ' ' << y << " 0 " << pop.mutations[m].s << '\n';
+                std::cout << i << ' ' << x << ' ' << y << " 0 " 
+                    << pop.mutations[m].pos << ' '
+                    << pop.mutations[m].s << '\n';
             }
         }
         if(pop.gametes[pop.diploids[i].second].smutations.empty())
         {
-            std::cout << i << ' ' << x << ' ' << y << " 1 " << "NA" << '\n';
+            std::cout << i << ' ' << x << ' ' << y << " 1 " << "NA NA" << '\n';
         }
         else
         {
             for(const auto & m : pop.gametes[pop.diploids[i].second].smutations)
             {
-                std::cout << i << ' ' << x << ' ' << y << " 1 " << pop.mutations[m].s << '\n';
+                std::cout << i << ' ' << x << ' ' << y << " 1 " 
+                    << pop.mutations[m].pos << ' ' 
+                    << pop.mutations[m].s << '\n';
             }
         }
     }
