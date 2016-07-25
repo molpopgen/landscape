@@ -32,5 +32,19 @@ struct csdiploid : public KTfwd::tags::custom_diploid_t
     }
 };
 
+/*
+ * Our population is a single deme.  The mutation type
+ * is KTfwd::popgenmut, from fwdpp/sugar/popgenmut.hpp.  
+ * This mutation is the "standard" mutation type with 
+ * position, s, h as its main data members.  The origin
+ * time of mutations is also recorded.
+ *
+ * The diploid type is our csdiploid defined above.
+ *
+ * For more details, see the definition of a "singlepop"
+ * in fwdpp/sugar/singlepop and the files included from there.
+ *
+ * The fwdpp manual online has detailed info, too.
+ */
 using poptype = KTfwd::singlepop<KTfwd::popgenmut,csdiploid>;
 #endif
