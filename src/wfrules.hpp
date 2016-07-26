@@ -154,19 +154,42 @@ struct WFLandscapeRules
         //build lookup table of possible mates.
         //selfing still allowed...
         if(fitnesses_temp.size() < possible_mates.size()) fitnesses_temp.resize(possible_mates.size());
+		double sumw=0.0;
+		for(std::size_t i = 0 ; i < possible_mates.size() ;++i)
+		{
+			fitnesses_temp[i]=fitnesses[possible_mates[i].second];
+			sumw += fitnesses_temp[i];
+		}
+		double uni = gsl_ran_flat(r,0.0,sumw);
+		double sum=0.0;
+		for(std::size_t i=0;i<possible_mates.size();++i)
+		{
+			sum+=fitnesses_temp[i];
+			if(uni < sum) 
+			{
+				return possible_mates[i].second;
+			}
+		}
+		//should never (?) get here...
+        return possible_mates.back().second;
 
-        //build another one of these fast fitness lookups
+		/* This next code uses the GSL lookup idea
+		 * to pick mates according to fitness.
+		 * This is slower than the above, taking another
+		 * O(k) step to preprocess...
+		 */
+		//build another one of these fast fitness lookups
         //and return a value from it.
-        for(std::size_t i=0; i<possible_mates.size(); ++i)
-        {
-            //Each diploid's point data contains both its
-            //xy coords AND there it is in diploids,
-            //and thus in fitnesses.
-            //(see simtypes.hpp)
-            fitnesses_temp[i]=fitnesses[possible_mates[i].second];
-        }
-        lookup2 = KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr(gsl_ran_discrete_preproc(possible_mates.size(),fitnesses_temp.data()));
-        return gsl_ran_discrete(r,lookup2.get());
+        //for(std::size_t i=0; i<possible_mates.size(); ++i)
+        //{
+        //    //Each diploid's point data contains both its
+        //    //xy coords AND there it is in diploids,
+        //    //and thus in fitnesses.
+        //    //(see simtypes.hpp)
+        //    fitnesses_temp[i]=fitnesses[possible_mates[i].second];
+        //}
+        //lookup2 = KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr(gsl_ran_discrete_preproc(possible_mates.size(),fitnesses_temp.data()));
+        //return possible_mates[gsl_ran_discrete(r,lookup2.get())].second;
     }
 
     //! \brief Update some property of the offspring based on properties of the parents
