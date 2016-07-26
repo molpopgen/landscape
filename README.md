@@ -69,3 +69,5 @@ Implementation details:
   explored.
 * There is a difference in how data are accessed in const and non-const contexts.  The use of get<X>() is what I'm
   referring to here--see the code...
+* __Disturbing:__ changing the rtree parameters affects the output _for the same random number seed_.  Definitely gotta
+  look into that!
