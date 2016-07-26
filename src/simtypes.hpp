@@ -20,6 +20,11 @@ struct csdiploid : public KTfwd::tags::custom_diploid_t
  */
 {
     using point = boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian>;
+    //A "value" is an x,y coordinate,
+    //plus a size_t, which is the index where 
+    //this diploid is stored in the population.
+    //So, this size_t has a value from 0 to N_t-1,
+    //where N_t is pop size in generation t.
     using value = std::pair<point, std::size_t>;
     using first_type = std::size_t;
     using second_type = std::size_t;
