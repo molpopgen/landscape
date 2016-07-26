@@ -25,6 +25,35 @@ namespace bgi = boost::geometry::index;
 using rtree_type = bgi::rtree< landscape::csdiploid::value, bgi::quadratic<16> >;
 using rules_type = landscape::WFLandscapeRules<rtree_type>;
 
+//Arbitrary model for fitness.
+//Treat s as -s in the
+//lower left quandrant of the landscape,
+//otherwise as s.
+//Fitness is multiplicative across sites.
+struct spatial_fitness
+{
+    inline double operator()(const landscape::csdiploid & dip,
+                             const std::vector<KTfwd::gamete> & gametes,
+                             const std::vector<KTfwd::popgenmut> & mutations) const
+    {
+        double x = boost::geometry::get<0>(dip.v.first);
+        double y = boost::geometry::get<1>(dip.v.first);
+        KTfwd::site_dependent_fitness s;
+        double geographic_factor = 1.0;
+        if(x<=0.5 && y <= 0.5) geographic_factor = -1.0;
+
+        return std::max(0.0,
+                        s(dip,gametes,mutations,
+        [&geographic_factor](double & w,const KTfwd::popgenmut & m) {
+            w *= (1.0 + geographic_factor*2.0*m.s);
+        },
+        [&geographic_factor](double & w,const KTfwd::popgenmut & m) {
+            w *= (1.0 + geographic_factor*m.h*m.s);
+        },
+        1.0));
+    }
+};
+
 int main(int argc, char ** argv)
 {
     if(argc!=10)
@@ -71,14 +100,25 @@ int main(int argc, char ** argv)
     landscape::poptype pop(N);
 
     //Assign random points in space to our diploids.
-    //The geometry is a square (0,0) to (1,1)
+    //The geometry is a square (0,0) to (1,1).
+    //We assign 1/2 of diploids to upper left,
+    //and 1/2 to lower right of the landscape initially.
     rtree_type rtree;
     for(std::size_t i=0; i<N; ++i)
     {
-        //Yes, I am aware that this does not truly
-        //sample uniformly in 2d...
-        double x = gsl_ran_flat(rng.get(),0.,1.);
-        double y = gsl_ran_flat(rng.get(),0.,1.);
+        double x=0.0,y=0.0;
+        if(i<N/2)
+        {
+            //Yes, I am aware that this does not truly
+            //sample uniformly in 2d...
+            x = gsl_ran_flat(rng.get(),0.,0.5);
+            y = gsl_ran_flat(rng.get(),0.5,1.);
+        }
+        else
+        {
+            x = gsl_ran_flat(rng.get(),0.5,1);
+            y = gsl_ran_flat(rng.get(),0.,0.5);
+        }
         pop.diploids[i].v = landscape::csdiploid::value(std::make_pair(landscape::csdiploid::point(x,y),i));
         rtree.insert(pop.diploids[i].v);
     }
@@ -103,8 +143,8 @@ int main(int argc, char ** argv)
         }),
         std::bind(KTfwd::poisson_xover(),rng.get(),littler,0.,1.,
                   std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-        std::bind(KTfwd::multiplicative_diploid(),std::placeholders::_1,std::placeholders::_2,
-                  std::placeholders::_3,2.),
+        std::bind(spatial_fitness(),std::placeholders::_1,std::placeholders::_2,
+                  std::placeholders::_3),
         pop.neutral,pop.selected,0,rules);
     }
     //At this point, we would do some analysis...
@@ -125,9 +165,9 @@ int main(int argc, char ** argv)
         {
             for(const auto & m : pop.gametes[pop.diploids[i].first].smutations)
             {
-                std::cout << i << ' ' << x << ' ' << y << " 0 " 
-                    << pop.mutations[m].pos << ' '
-                    << pop.mutations[m].s << '\n';
+                std::cout << i << ' ' << x << ' ' << y << " 0 "
+                          << pop.mutations[m].pos << ' '
+                          << pop.mutations[m].s << '\n';
             }
         }
         if(pop.gametes[pop.diploids[i].second].smutations.empty())
@@ -138,9 +178,9 @@ int main(int argc, char ** argv)
         {
             for(const auto & m : pop.gametes[pop.diploids[i].second].smutations)
             {
-                std::cout << i << ' ' << x << ' ' << y << " 1 " 
-                    << pop.mutations[m].pos << ' ' 
-                    << pop.mutations[m].s << '\n';
+                std::cout << i << ' ' << x << ' ' << y << " 1 "
+                          << pop.mutations[m].pos << ' '
+                          << pop.mutations[m].s << '\n';
             }
         }
     }
