@@ -1,8 +1,9 @@
 CXX=c++
 CXXFLAGS=-std=c++11 -O2 -Wall -W -DNDEBUG
 
-all: rtree_example.o wflandscape.o
+all: rtree_example.o rtree_wtf.o wflandscape.o
 	$(CXX) $(CXXFLAGS) -o rtree_example rtree_example.o -lgsl -lgslcblas
+	$(CXX) $(CXXFLAGS) -o rtree_wtf rtree_wtf.o -lgsl -lgslcblas
 	$(CXX) $(CXXFLAGS) -o wflandscape wflandscape.o -lgsl -lgslcblas
 
 clean:

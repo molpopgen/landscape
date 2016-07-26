@@ -23,6 +23,12 @@ Lessons learned:
 1. boost < 1.5.9 has no method to iterate over an rtree without doing a query.  That is unfortunate--Ubuntu/Debian
    currently have 1.5.8 by default.
 
+### rtree_wtf.cc
+
+Makes rtrees a few different ways with the same underlying data.  Searches them.  The result is that the rtree
+layout/construction method affects the order in which results are found/stored, but results are same.  This explains why
+the simulation gets different outputs as we change the details of the rtree.
+
 ### wflandscape.cc
 
 An implementation of a simple landscape model + Wright-Fisher sampling. This example serves to demonstrate how to
