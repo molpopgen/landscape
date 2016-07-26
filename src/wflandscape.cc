@@ -33,6 +33,12 @@ using rules_type = landscape::WFLandscapeRules<rtree_type>;
 //Fitness is multiplicative across sites.
 struct spatial_fitness
 {
+    /* This function makes a spatial fitness object
+     * behave as a function.
+     * Note: if we had an additional landscape that reflected
+     * how the landscape modified genetic values of fitness,
+     * we could bind it here.
+     */
     inline double operator()(const landscape::csdiploid & dip,
                              const std::vector<KTfwd::gamete> & gametes,
                              const std::vector<KTfwd::popgenmut> & mutations) const
