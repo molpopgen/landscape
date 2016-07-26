@@ -132,7 +132,7 @@ struct WFLandscapeRules
     //selfing occurs.  Othersise, we choose parent 2
     //based on fitnesses within the radius.
     template<typename diploid_t,typename gcont_t,typename mcont_t>
-    inline size_t pick2(const gsl_rng * r, const size_t & p1, const double & f,
+    inline size_t pick2(const gsl_rng * r, const size_t & p1, const double & ,
                         diploid_t & parent1, const gcont_t &, const mcont_t &)
     {
         using value_t = typename diploid_t::value;
