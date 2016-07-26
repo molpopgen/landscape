@@ -16,6 +16,8 @@
 #include <fwdpp/experimental/sample_diploid.hpp> //"Experimental" version of WF sampling function
 #include <fwdpp/sugar/infsites.hpp> //Infinitely-many sites mutation scheme.  This works with popgenmut out of the box.
 #include <fwdpp/sugar/GSLrng_t.hpp> //Smart-pointer wrapper around the gsl_rng *
+#include <fwdpp/sugar/sampling.hpp>
+#include <Sequence/SimData.hpp>
 #include <gsl/gsl_randist.h>
 #include <boost/geometry/index/rtree.hpp>
 
@@ -63,7 +65,7 @@ struct spatial_fitness
 
 int main(int argc, char ** argv)
 {
-    if(argc!=10)
+    if(argc!=11)
     {
         std::cerr << "Incorrect number of arguments.\n"
                   << "Usage:\n"
@@ -76,7 +78,13 @@ int main(int argc, char ** argv)
                   << "mutrate_to_selected "
                   << "radius "
                   << "dispersal "
-                  << "seed\n";
+                  << "seed "
+                  << "format\n"
+                  << "\n"
+                  << "Note: format = 0 means list of diploids + selected mutations\n"
+                  << "format = nsam > 0  = ms-style output of nsam diploids + their geographic locations\n"
+				  << "format = N = output info for whole population\n"
+				  << "format > N = bad bad bad\n";
         exit(0);
     }
     int argn = 1;
@@ -89,6 +97,7 @@ int main(int argc, char ** argv)
     const double radius = atof(argv[argn++]);  //Radius in which to search for mates.
     const double dispersal = atof(argv[argn++]); //std. deviation in offspring dispersal
     const unsigned seed = atoi(argv[argn++]);  //RNG seed.
+    const unsigned format = atoi(argv[argn++]);
 
     //per-generation rates
     const double mu_n = theta/double(4*N);
@@ -165,7 +174,7 @@ int main(int argc, char ** argv)
      * this object.
      *
      * Note that the expressions below are easily modified
-     * to allow distributions on s,h, etc., and it is 
+     * to allow distributions on s,h, etc., and it is
      * not hard to have variation in mutation and recombination rates,
      * but that is just beyond the scope here.
      */
@@ -173,9 +182,9 @@ int main(int argc, char ** argv)
     //Mutation positions are uniform on (0,1]
     auto mutation_positions = [&rng] { return gsl_rng_uniform(rng.get()); };
     //Every mutation has the same selection coefficient...
-    auto selection_coefficients = [&s]{ return s; };
+    auto selection_coefficients = [&s] { return s; };
     //...and the same dominance
-    auto dominance = [&h]{return h;};
+    auto dominance = [&h] {return h;};
     auto mutation_model = std::bind(KTfwd::infsites(),
                                     std::placeholders::_1,
                                     std::placeholders::_2,
@@ -214,46 +223,89 @@ int main(int argc, char ** argv)
                       fitness_model,
                       pop.neutral,pop.selected,
                       0,//This is probability(selfing). It defaults to 0, but we need to pass it
-                        //so that we can pass our "rules" along on the next line
+                      //so that we can pass our "rules" along on the next line
                       rules);
         //Take any fixed variants, transfer them out of population and into fixation time containers
         KTfwd::update_mutations(pop.mutations,pop.fixations,pop.fixation_times,pop.mut_lookup,pop.mcounts,generation,2*N);
     }
-    //At this point, we would do some analysis...
-    //Here, we'll print out each diploid, and
-    //the position + s for each mutation on each chromosome,
-    //plus its coordinate.  Output will be "tidy",
-    //e.g. ready for dplyr.
-    std::cout << "dip x y chrom pos s\n";
-    for(std::size_t i=0; i<pop.diploids.size(); ++i)
+    if(!format)
     {
-        auto x = pop.diploids[i].v.first.get<0>();
-        auto y = pop.diploids[i].v.first.get<1>();
-        if(pop.gametes[pop.diploids[i].first].smutations.empty())
+        //At this point, we would do some analysis...
+        //Here, we'll print out each diploid, and
+        //the position + s for each mutation on each chromosome,
+        //plus its coordinate.  Output will be "tidy",
+        //e.g. ready for dplyr.
+        std::cout << "dip x y chrom pos s\n";
+        for(std::size_t i=0; i<pop.diploids.size(); ++i)
         {
-            std::cout << i << ' ' << x << ' ' << y << " 0 " <<"NA NA" << '\n';
-        }
-        else
-        {
-            for(const auto & m : pop.gametes[pop.diploids[i].first].smutations)
+            auto x = pop.diploids[i].v.first.get<0>();
+            auto y = pop.diploids[i].v.first.get<1>();
+            if(pop.gametes[pop.diploids[i].first].smutations.empty())
             {
-                std::cout << i << ' ' << x << ' ' << y << " 0 "
-                          << pop.mutations[m].pos << ' '
-                          << pop.mutations[m].s << '\n';
+                std::cout << i << ' ' << x << ' ' << y << " 0 " <<"NA NA" << '\n';
+            }
+            else
+            {
+                for(const auto & m : pop.gametes[pop.diploids[i].first].smutations)
+                {
+                    std::cout << i << ' ' << x << ' ' << y << " 0 "
+                              << pop.mutations[m].pos << ' '
+                              << pop.mutations[m].s << '\n';
+                }
+            }
+            if(pop.gametes[pop.diploids[i].second].smutations.empty())
+            {
+                std::cout << i << ' ' << x << ' ' << y << " 1 " << "NA NA" << '\n';
+            }
+            else
+            {
+                for(const auto & m : pop.gametes[pop.diploids[i].second].smutations)
+                {
+                    std::cout << i << ' ' << x << ' ' << y << " 1 "
+                              << pop.mutations[m].pos << ' '
+                              << pop.mutations[m].s << '\n';
+                }
             }
         }
-        if(pop.gametes[pop.diploids[i].second].smutations.empty())
+    }
+    else
+    {
+        /* Sample "format" random diploids.  We want to get their
+         * geographic info, so we'll randomly choose individuals
+         * w/o replacement, and use fwdpp to get an "ms" block
+         * from the population
+         */
+        std::vector<unsigned> diploids2sample;
+        if( format < N )
         {
-            std::cout << i << ' ' << x << ' ' << y << " 1 " << "NA NA" << '\n';
-        }
-        else
-        {
-            for(const auto & m : pop.gametes[pop.diploids[i].second].smutations)
+            for(unsigned i=0; i<format; ++i)
             {
-                std::cout << i << ' ' << x << ' ' << y << " 1 "
-                          << pop.mutations[m].pos << ' '
-                          << pop.mutations[m].s << '\n';
+                auto ind = unsigned(gsl_ran_flat(rng.get(),0.0,double(N)));
+                while(find(diploids2sample.begin(),diploids2sample.end(),ind)!=diploids2sample.end())
+                {
+                    ind = unsigned(gsl_ran_flat(rng.get(),0.0,double(N)));
+                }
+                diploids2sample.push_back(ind);
             }
+        } else
+        {
+            diploids2sample.resize(N);
+            unsigned i=0;
+            std::generate(diploids2sample.begin(),diploids2sample.end(),[&i] {return i++;});
         }
+
+        auto popsample = KTfwd::sample_separate(pop,diploids2sample,true);//true = do not include variants fixed in the sample
+        /*
+         * Print out geographic info for each individual,
+         * then neutral genotypes, then selected genotypes
+         */
+        for(auto & d : diploids2sample)
+        {
+            std::cout << pop.diploids[d].v.first.get<0>() << ' ' << pop.diploids[d].v.first.get<1>() << '\n';
+        }
+        //Now we need libsequence
+        Sequence::SimData neutral(popsample.first.begin(),popsample.first.end()),
+                 selected(popsample.second.begin(),popsample.second.end());
+        std::cout << neutral << '\n' << selected << '\n';
     }
 }
