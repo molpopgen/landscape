@@ -146,6 +146,7 @@ int main(int argc, char ** argv)
         std::bind(spatial_fitness(),std::placeholders::_1,std::placeholders::_2,
                   std::placeholders::_3),
         pop.neutral,pop.selected,0,rules);
+        KTfwd::update_mutations(pop.mutations,pop.fixations,pop.fixation_times,pop.mut_lookup,pop.mcounts,generation,2*N);
     }
     //At this point, we would do some analysis...
     //Here, we'll print out each diploid, and
