@@ -81,7 +81,7 @@ struct WFLandscapeRules
         //Debug loop.  Will not be executed if compiled
         //with -DNDEBUG.
         //Makes sure KRT hasn't messed things up.
-#ifndef NEBUG
+#ifndef NDEBUG
         for(std::size_t i = 0 ; i < diploids.size() ; ++i)
         {
             std::vector<typename dipcont_t::value_type::value> v;
