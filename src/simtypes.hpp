@@ -19,9 +19,9 @@ struct csdiploid : public KTfwd::tags::custom_diploid_t
  * that it gets "dispatched" properly.
  */
 {
-	using point = boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian>;
-	using value = std::pair<point, std::size_t>;
-	using first_type = std::size_t;
+    using point = boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian>;
+    using value = std::pair<point, std::size_t>;
+    using first_type = std::size_t;
     using second_type = std::size_t;
     first_type first; //first gamete
     second_type second;//second gamete

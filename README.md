@@ -53,9 +53,11 @@ The model in brief:
 * An offsprings location in x,y space is the midpoint of the parents + a Gaussian noise term added independently to each
   coordinate.
 * The "landscape" is a square from [0,0] to [1,1].
-* Individuals are seeded with random coordinates
+* Initially, 1/2 the population is placed in the upper left and lower right quadrants.
+* Selection coefficients have the opposite sign in the bottom left quadrant.
 
 Implementation details:
 
 * Custom rules class handles the landscape details.  The rules class design conforms to the specifications of fwdpp's
   "experimenta" API.
+* Custom fitness function.
