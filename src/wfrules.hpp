@@ -96,7 +96,8 @@ struct WFLandscapeRules
             double p1y=boost::geometry::get<1>(parent1.v.first);
             double p2x=boost::geometry::get<0>(v.first);
             double p2y=boost::geometry::get<1>(v.first);
-            return std::fabs(p1x-p2x)<=this->radius && std::fabs(p1y-p2y)<=this->radius;
+            double euclid = std::sqrt(std::pow(p1x-p2x,2.0)+std::pow(p1y-p2y,2.0));
+            return euclid <= radius;
         }),
         std::back_inserter(possible_mates));
         if(possible_mates.size()==1) return p1; //only possible mate was itself
