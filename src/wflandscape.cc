@@ -22,6 +22,7 @@
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
 
+//typedefs to simplify life
 using rtree_type = bgi::rtree< landscape::csdiploid::value, bgi::quadratic<16> >;
 using rules_type = landscape::WFLandscapeRules<rtree_type>;
 
@@ -32,6 +33,12 @@ using rules_type = landscape::WFLandscapeRules<rtree_type>;
 //Fitness is multiplicative across sites.
 struct spatial_fitness
 {
+    /* This function makes a spatial fitness object
+     * behave as a function.
+     * Note: if we had an additional landscape that reflected
+     * how the landscape modified genetic values of fitness,
+     * we could bind it here.
+     */
     inline double operator()(const landscape::csdiploid & dip,
                              const std::vector<KTfwd::gamete> & gametes,
                              const std::vector<KTfwd::popgenmut> & mutations) const
@@ -127,25 +134,89 @@ int main(int argc, char ** argv)
     //expected at equilibrium.
     pop.mutations.reserve(size_t(std::ceil(std::log(2*N)*theta+0.667*theta)));
 
+    /* Our rules type (defined in wfrules.hpp),
+     * gets initialized with the rtree from above,
+     * the "mating radius" and the "dispersal radius"
+     */
     rules_type rules(std::move(rtree),radius,dispersal);
-    for(unsigned generation = 0 ; generation < 10*N ; ++generation )
+
+    /* Now, we define our recombination,
+     * fitness, and mutation models.
+     *
+     * Recombination is uniform on the 1/2-open interval [0,1),
+     * which is what the 0 and 1 are in the call below:
+     */
+    auto recombination_model=std::bind(KTfwd::poisson_xover(),rng.get(),littler,0.,1.,
+                                       std::placeholders::_1,std::placeholders::_2,std::placeholders::_3);
+    /* Fitness is multiplicative, but with s treated as -s in a square
+     * bounded by (0,0) to (0.5,0.5)
+     */
+    auto fitness_model = std::bind(spatial_fitness(),std::placeholders::_1,std::placeholders::_2,
+                                   std::placeholders::_3);
+    //We're going to initialized our generation here...
+    unsigned generation=0;
+
+    /* The mutation model is infinitely-many sites.
+     * This code uses a function from the "sugar"
+     * part of fwdpp.  The mutation type is auto-detected
+     * by the compiler to be KTfwd::popgenmut.
+     *
+     * We'll cover the details as we move through creating
+     * this object.
+     *
+     * Note that the expressions below are easily modified
+     * to allow distributions on s,h, etc., and it is 
+     * not hard to have variation in mutation and recombination rates,
+     * but that is just beyond the scope here.
+     */
+
+    //Mutation positions are uniform on (0,1]
+    auto mutation_positions = [&rng] { return gsl_rng_uniform(rng.get()); };
+    //Every mutation has the same selection coefficient...
+    auto selection_coefficients = [&s]{ return s; };
+    //...and the same dominance
+    auto dominance = [&h]{return h;};
+    auto mutation_model = std::bind(KTfwd::infsites(),
+                                    std::placeholders::_1,
+                                    std::placeholders::_2,
+                                    rng.get(),
+                                    std::ref(pop.mut_lookup),
+                                    &generation,//this pointer to generation ensures that origin time of each mutation is recored
+                                    mu_n,
+                                    mu,
+                                    mutation_positions,
+                                    selection_coefficients,
+                                    dominance);
+    /* This is the main workhorse.
+     * We'll evolve for 10N generations.
+     * Each generation, a call to fwdpp's experimental
+     * version of sample_diploid applies the rules class
+     * for calculating fitnesses, picking parents, and updating
+     * offspring information.
+     *
+     * After each iteration, we remove fixations for efficiency.
+     * Here, a fixation would mean a variant fixed in the entire
+     * "pop" object.  Here, all neutral & selected variants get
+     * removed, but that is optional--fwdpp has a few variants of that
+     * function
+     */
+    for( ; generation < 10*N ; ++generation )
     {
         double wbar = KTfwd::experimental::sample_diploid(rng.get(),
-                      pop.gametes,pop.diploids,pop.mutations,pop.mcounts,
-                      N,mu_n+mu,
-                      std::bind(KTfwd::infsites(),std::placeholders::_1,std::placeholders::_2,rng.get(),std::ref(pop.mut_lookup),generation,
-        mu_n,mu,[&rng]() {
-            return gsl_rng_uniform(rng.get());
-        },[&s]() {
-            return s;
-        },[&h]() {
-            return h;
-        }),
-        std::bind(KTfwd::poisson_xover(),rng.get(),littler,0.,1.,
-                  std::placeholders::_1,std::placeholders::_2,std::placeholders::_3),
-        std::bind(spatial_fitness(),std::placeholders::_1,std::placeholders::_2,
-                  std::placeholders::_3),
-        pop.neutral,pop.selected,0,rules);
+                      pop.gametes,
+                      pop.diploids,
+                      pop.mutations,
+                      pop.mcounts,
+                      N, //Population size will be constant.  If changing, we also pass in the next size
+                      mu_n+mu, //TOTAL mutation rate = neutral + selected mutation rates
+                      mutation_model,
+                      recombination_model,
+                      fitness_model,
+                      pop.neutral,pop.selected,
+                      0,//This is probability(selfing). It defaults to 0, but we need to pass it
+                        //so that we can pass our "rules" along on the next line
+                      rules);
+        //Take any fixed variants, transfer them out of population and into fixation time containers
         KTfwd::update_mutations(pop.mutations,pop.fixations,pop.fixation_times,pop.mut_lookup,pop.mcounts,generation,2*N);
     }
     //At this point, we would do some analysis...
