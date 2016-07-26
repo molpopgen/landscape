@@ -1,5 +1,5 @@
 CXX=c++
-CXXFLAGS=-std=c++11 -O2 -Wall -W
+CXXFLAGS=-std=c++11 -O2 -Wall -W -DNDEBUG
 
 all: rtree_example.o wflandscape.o
 	$(CXX) $(CXXFLAGS) -o rtree_example rtree_example.o -lgsl -lgslcblas
