@@ -61,3 +61,11 @@ Implementation details:
 * Custom rules class handles the landscape details.  The rules class design conforms to the specifications of fwdpp's
   "experimenta" API.
 * Custom fitness function.
+
+#### Lessons learned
+
+* Implementation was relatively straightforward.
+* It isn't super-fast.  It seems that the parameters of constructing/balancing the rtree matter, and need to be
+  explored.
+* There is a difference in how data are accessed in const and non-const contexts.  The use of get<X>() is what I'm
+  referring to here--see the code...
