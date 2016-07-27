@@ -6,33 +6,10 @@ output: html_document
 
 ```{r setup, include=FALSE}
 fig.dim <- 5
-knitr::opts_chunk$set(fig.width=2*fig.dim,fig.align='center',echo=FALSE)
+knitr::opts_chunk$set(fig.width=2*fig.dim,fig.align='center')
 ```
 
-`wflandscape` can be used to simulate individuals in the unit square, as follows:
-```{r setup_params}
-run_wfl <- function (...) {
-    # these will be default parameter values
-    params <- list(
-            "N" = 10000,                     # total number of individuals
-            "theta" = 1000,                  # 4 N mu
-            "rho" = 1.0,                     # 4 N r
-            "s" = 0.1,                       # selection coefficient
-            "h" = 1.0,                       # dominance.  Fitnesses will be 1,1+sh,1+2s, so h=1=additive.
-            "mutrate_to_selected" = 1.0,     # mutation rate to selected variants
-            "radius" = 0.05,                 # Radius in which to search for mates.
-            "dispersal" = 0.02,              # std. deviation in offspring dispersal
-            "seed" =  1234,                  # RNG seed.
-            "format" = 100                   # number of samples to output the genotypes of
-        )
-    # but anything passed in will be copied over
-    input.params <- list(...)
-    for (k in seq_along(input.params)) {
-        params[[names(input.params)[k]]] <- input.params[k]
-    }
-    msout <- system2("./wflandscape", unlist(params), stdout=TRUE)
-}
-
+```{r input_funs, include=FALSE}
 #' Read in the ms output as output by wflandscape,
 #' in which:
 #'   - the first N lines are the coordinates of the individuals,
@@ -46,6 +23,7 @@ ms_to_matrix <- function (msout) {
     separator.ind <- grep("^[ ]*// *$",msout)
     segsites.ind <- grep("^[ ]*segsites:",msout)
     segsites <- lapply( segsites.ind, function (k) { scan( text=gsub("segsites:","",msout[k]), quiet=TRUE ) } )
+    nsegsites <- as.numeric(gsub("segsites: ", "", msout[segsites.ind]))
     positions.ind <- grep("^[ ]*positions:",msout)
     positions <- lapply( positions.ind, function (k) { scan( text=gsub("positions:","",msout[k]), quiet=TRUE ) } )
     # get the spatial coordinates:
@@ -53,17 +31,24 @@ ms_to_matrix <- function (msout) {
     dim(xy) <- c(2, length(xy)/2)
     xy <- t(xy)
     colnames(xy) <- c("x","y")
-    # do some checks
-    stopifnot( 2*nrow(xy) == diff(positions.ind)-3 )
-    stopifnot( 2*nrow(xy) == length(msout)-positions.ind[2] )
     # get the neutral genotypes: columns will be individuals, rows will be SNPs
     get_geno <- function (geno) { do.call( cbind, lapply( strsplit( geno, "" ), as.numeric ) ) }
-    neutrals <- get_geno( msout[seq(positions.ind[1]+1,positions.ind[2]-3)] )
-    selecteds <- get_geno( msout[seq(positions.ind[2]+1,length(msout))] )
+    if (nsegsites[1]>0) { 
+        stopifnot( 2*nrow(xy) == diff(segsites.ind)-3 )
+        neutrals <- list( pos=positions[[1]], geno=get_geno( msout[seq(segsites.ind[1]+2,segsites.ind[2]-2)] ) )
+    } else {
+        neutrals <- NULL
+    }
+    if (nsegsites[2]>0) { 
+        stopifnot( 2*nrow(xy) == length(msout)-positions.ind[length(positions.ind)] )
+        selecteds <- list( pos=positions[[length(positions)]], geno=get_geno( msout[seq(positions.ind[length(positions.ind)]+1,length(msout))] ) )
+    } else {
+        selecteds <- NULL
+    }
     return( list(
                     xy=xy,
-                    neutral = list( pos=positions[[1]], geno=neutrals ),
-                    selected = list( pos=positions[[2]], geno=selecteds )
+                    neutral = neutrals,
+                    selected = selecteds
                 ) )
 }
 
@@ -75,10 +60,43 @@ diploidize <- function (geno) {
 }
 ```
 
-Run the simulation:
+`wflandscape` can be used to simulate individuals in the unit square, as follows:
+```{r setup_params}
+run_wfl <- function (...) {
+    # these will be default parameter values
+    params <- list(
+            "N" = 2000,                      # total number of individuals
+            "theta" = 1000,                  # 4 N mu
+            "rho" = 100,                     # 4 N r
+            "s" = 0.001,                     # selection coefficient
+            "h" = 1.0,                       # dominance.  Fitnesses will be 1,1+sh,1+2s, so h=1=additive.
+            "mutrate_to_selected" = 1.0,     # mutation rate to selected variants
+            "radius" = 0.04,                  # Radius in which to search for mates.
+            "dispersal" = 0.04,               # std. deviation in offspring dispersal
+            "seed" =  1234,                  # RNG seed.
+            "format" = 1000                  # number of samples to output the genotypes of
+        )
+    # but anything passed in will be copied over
+    input.params <- list(...)
+    for (k in seq_along(input.params)) {
+        params[[names(input.params)[k]]] <- input.params[k]
+    }
+    msout <- system2("./wflandscape", unlist(params), stdout=TRUE)
+}
+```
+
+Here, we run the simulation:
 ```{r run_things}
-msout <- run_wfl()
+system.time( msout <- run_wfl(
+                N=2000, 
+                radius=.04, 
+                dispersal=.04) )
 msmat <- ms_to_matrix(msout)
+```
+
+Here's where the individuals ended up:
+```{r plot_locs}
+plot(msmat$xy, xlim=c(0,1), ylim=c(0,1))
 ```
 
 Look at isolation by distance:
