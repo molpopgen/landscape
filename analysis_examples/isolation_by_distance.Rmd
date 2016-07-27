@@ -1,0 +1,105 @@
+---
+title: "Isolation by Distance"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+fig.dim <- 5
+knitr::opts_chunk$set(fig.width=2*fig.dim,fig.align='center',echo=FALSE)
+```
+
+`wflandscape` can be used to simulate individuals in the unit square, as follows:
+```{r setup_params}
+run_wfl <- function (...) {
+    # these will be default parameter values
+    params <- list(
+            "N" = 10000,                     # total number of individuals
+            "theta" = 1000,                  # 4 N mu
+            "rho" = 1.0,                     # 4 N r
+            "s" = 0.1,                       # selection coefficient
+            "h" = 1.0,                       # dominance.  Fitnesses will be 1,1+sh,1+2s, so h=1=additive.
+            "mutrate_to_selected" = 1.0,     # mutation rate to selected variants
+            "radius" = 0.05,                 # Radius in which to search for mates.
+            "dispersal" = 0.02,              # std. deviation in offspring dispersal
+            "seed" =  1234,                  # RNG seed.
+            "format" = 100                   # number of samples to output the genotypes of
+        )
+    # but anything passed in will be copied over
+    input.params <- list(...)
+    for (k in seq_along(input.params)) {
+        params[[names(input.params)[k]]] <- input.params[k]
+    }
+    msout <- system2("./wflandscape", unlist(params), stdout=TRUE)
+}
+
+#' Read in the ms output as output by wflandscape,
+#' in which:
+#'   - the first N lines are the coordinates of the individuals,
+#'   - the next line is "//", followed by the NEUTRAL genotypes
+#'   - the next gives "segsites: (number)"
+#'   - the next gives "positions: (list of coordinates)"
+#'   - the next 2N lines are the genotypes (strings of 0 or 1)
+#'   - the next line is "//", followed by the SELECTED genotypes
+#'   - again another genotype stanza as above
+ms_to_matrix <- function (msout) {
+    separator.ind <- grep("^[ ]*// *$",msout)
+    segsites.ind <- grep("^[ ]*segsites:",msout)
+    segsites <- lapply( segsites.ind, function (k) { scan( text=gsub("segsites:","",msout[k]), quiet=TRUE ) } )
+    positions.ind <- grep("^[ ]*positions:",msout)
+    positions <- lapply( positions.ind, function (k) { scan( text=gsub("positions:","",msout[k]), quiet=TRUE ) } )
+    # get the spatial coordinates:
+    xy <- scan( text=msout[1:(separator.ind[1]-1)], quiet=TRUE )
+    dim(xy) <- c(2, length(xy)/2)
+    xy <- t(xy)
+    colnames(xy) <- c("x","y")
+    # do some checks
+    stopifnot( 2*nrow(xy) == diff(positions.ind)-3 )
+    stopifnot( 2*nrow(xy) == length(msout)-positions.ind[2] )
+    # get the neutral genotypes: columns will be individuals, rows will be SNPs
+    get_geno <- function (geno) { do.call( cbind, lapply( strsplit( geno, "" ), as.numeric ) ) }
+    neutrals <- get_geno( msout[seq(positions.ind[1]+1,positions.ind[2]-3)] )
+    selecteds <- get_geno( msout[seq(positions.ind[2]+1,length(msout))] )
+    return( list(
+                    xy=xy,
+                    neutral = list( pos=positions[[1]], geno=neutrals ),
+                    selected = list( pos=positions[[2]], geno=selecteds )
+                ) )
+}
+
+# turn a matrix of 0/1s (haploid) into a matrix of 0/1/2s (diploid)
+diploidize <- function (geno) {
+    ninds <- ncol(geno)/2
+    projmat <- Matrix::sparseMatrix( i=seq_len(2*ninds), j=rep(seq_len(ninds),each=2), x=1.0 )
+    as.matrix( geno %*% projmat )
+}
+```
+
+Run the simulation:
+```{r run_things}
+msout <- run_wfl()
+msmat <- ms_to_matrix(msout)
+```
+
+Look at isolation by distance:
+```{r plot_things}
+geo.dist <- dist( msmat$xy )
+gen.dist <- dist( t(diploidize(msmat$neutral$geno)), method="manhattan" )
+layout(t(1:2))
+gdist.fac <- cut( geo.dist, 30 )
+# the classic IBD plot
+fmat <- 1-gen.dist/nrow(msmat$neutral$geno)
+plot( geo.dist, fmat, 
+        xlab="geographic distance", 
+        ylab="P(IBD)" )
+lines( tapply( geo.dist, gdist.fac, mean ),
+        tapply( fmat, gdist.fac, mean ),
+        col='red', lwd=2 )
+# divergence against distance
+plot( geo.dist, gen.dist, 
+        xlab="geographic distance", 
+        ylab="number of differences" )
+lines( tapply( geo.dist, gdist.fac, mean ),
+        tapply( gen.dist, gdist.fac, mean ),
+        col='red', lwd=2 )
+```
