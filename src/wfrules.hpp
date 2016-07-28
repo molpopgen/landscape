@@ -5,6 +5,11 @@
 #include <fwdpp/internal/gsl_discrete.hpp>
 #include <fwdpp/type_traits.hpp>
 #include <boost/geometry/index/rtree.hpp>
+// Boost.Range
+#include <boost/range.hpp>
+// adaptors
+#include <boost/range/adaptor/indexed.hpp>
+#include <boost/range/adaptor/transformed.hpp>
 
 namespace landscape
 {
@@ -43,7 +48,11 @@ struct WFLandscapeRules
     //These are smart pointer wrappers around
     //gsl_ran_discrete_t
     KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr lookup,lookup2;
-    rtree_type parental_rtree,offspring_rtree;
+    rtree_type parental_rtree;
+    using rtree_type_value_t = typename rtree_type::value_type;
+    using offspring_vec = std::vector<rtree_type_value_t>;
+    offspring_vec offspring_locations;
+
     //"Constructor" function initialized the object.
     //We need an initial rtree, the "mating radius",
     //and the dispersal radius.  The initial rtree
@@ -54,10 +63,21 @@ struct WFLandscapeRules
         fitnesses(std::vector<double>()),
         lookup(KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr(nullptr)),
         lookup2(KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr(nullptr)),
-        parental_rtree(rtree_type()),
-        offspring_rtree(std::move(r)) //we will move the initial rtree into the rtree for offspring
+        parental_rtree(std::move(r)), //move construct from the input data
+        offspring_locations(std::vector<rtree_type_value_t>())
     {
     }
+    //Taken from http://www.boost.org/doc/libs/1_61_0/libs/geometry/doc/html/geometry/spatial_indexes/rtree_examples/range_adaptors.html
+    template <typename First, typename Second>
+    struct pair_maker
+    {
+        typedef std::pair<First, Second> result_type;
+        template<typename T>
+        inline result_type operator()(T const& v) const
+        {
+            return result_type(v.value(), v.index());
+        }
+    };
 
     //Get fitnesses for each diploid, tally current mean fitness.
     //Create fast lookup table for individuals based on fitness
@@ -72,10 +92,13 @@ struct WFLandscapeRules
            const mcont_t & mutations,
            const fitness_func & ff)
     {
-        //move the offspring rtree into the parental rtree
-        parental_rtree = std::move(offspring_rtree);
-        //re-initialize offspring rtree
-        offspring_rtree=rtree_type();
+        if(!offspring_locations.empty())//then we've been through at least 1 generation...
+        {
+            parental_rtree = rtree_type(offspring_locations | boost::adaptors::indexed()
+                                        | boost::adaptors::transformed(pair_maker<typename offspring_vec::value_type,typename offspring_vec::size_type>()));
+            offspring_locations.clear();
+        }
+        offspring_locations.reserve(diploids.size());
         //set "dipindex to 0.
         dipindex=0;
         //Debug loop.  Will not be executed if compiled
@@ -154,31 +177,31 @@ struct WFLandscapeRules
         //build lookup table of possible mates.
         //selfing still allowed...
         if(fitnesses_temp.size() < possible_mates.size()) fitnesses_temp.resize(possible_mates.size());
-		double sumw=0.0;
-		for(std::size_t i = 0 ; i < possible_mates.size() ;++i)
-		{
-			fitnesses_temp[i]=fitnesses[possible_mates[i].second];
-			sumw += fitnesses_temp[i];
-		}
-		double uni = gsl_ran_flat(r,0.0,sumw);
-		double sum=0.0;
-		for(std::size_t i=0;i<possible_mates.size();++i)
-		{
-			sum+=fitnesses_temp[i];
-			if(uni < sum) 
-			{
-				return possible_mates[i].second;
-			}
-		}
-		//should never (?) get here...
+        double sumw=0.0;
+        for(std::size_t i = 0 ; i < possible_mates.size() ; ++i)
+        {
+            fitnesses_temp[i]=fitnesses[possible_mates[i].second];
+            sumw += fitnesses_temp[i];
+        }
+        double uni = gsl_ran_flat(r,0.0,sumw);
+        double sum=0.0;
+        for(std::size_t i=0; i<possible_mates.size(); ++i)
+        {
+            sum+=fitnesses_temp[i];
+            if(uni < sum)
+            {
+                return possible_mates[i].second;
+            }
+        }
+        //should never (?) get here...
         return possible_mates.back().second;
 
-		/* This next code uses the GSL lookup idea
-		 * to pick mates according to fitness.
-		 * This is slower than the above, taking another
-		 * O(k) step to preprocess...
-		 */
-		//build another one of these fast fitness lookups
+        /* This next code uses the GSL lookup idea
+         * to pick mates according to fitness.
+         * This is slower than the above, taking another
+         * O(k) step to preprocess...
+         */
+        //build another one of these fast fitness lookups
         //and return a value from it.
         //for(std::size_t i=0; i<possible_mates.size(); ++i)
         //{
@@ -214,7 +237,7 @@ struct WFLandscapeRules
         //we use dipindex here to record where this offspring is
         //in the diploids container.
         offspring.v = typename diploid_t::value(std::make_pair(typename diploid_t::point(x,y),dipindex++));
-        offspring_rtree.insert(offspring.v);
+        offspring_locations.push_back(offspring.v);
     }
 };
 }
