@@ -100,6 +100,29 @@ time ./wflandscape_timing 10000 0 0 0 1 0 .05 .05 123 1 > /dev/null
 0m4.065s    rstar<16>
 0m3.293s    rstar<64>
 
+Redo the timings on KRT's development machine using code straigh from Peter's pull request:
+
+     time   options
+---------   -----------------
+0m5.338s    quadratic<64>
+0m6.267s    quadratic<16>
+0m6.074s    linear<16>
+0m5.426s    linear<64>
+0m5.444s    linear<256>
+0m6.560s    rstar<16>
+0m5.944     rstar<64>
+
+That's curious:  Linux/GCC5.4 gives quite different behavior from Peter's laptop. Let's look at a few params using
+clang++-3.8 on my same Linux system:
+
+     time   options
+---------   -----------------
+0m6.104s    rstar<64>
+0m6.753s    rstart<16>
+0m5.432s    linear<256>
+
+That's not it, which is good news.
+
 Since [the introduction](http://www.boost.org/doc/libs/1_61_0/libs/geometry/doc/html/geometry/spatial_indexes/introduction.html) says that linear is fastest to insert
 but slowest to query, this suggests that *building* the tree is taking the longest.
 a larger maximum number of items per node may be more efficient for the same reason.
