@@ -85,6 +85,22 @@ Implementation details:
 **Results:**
 
 `wflanscape_timing.cc` was modified so that it runs for 10 generations (not $10N$).
+Timing can be done by:
+```
+cp wflandscape_timing.cc temp.cc
+for type in linear quadratic rstar
+do 
+    for n in 16 64
+    do 
+        echo $type $n
+        cp temp.cc wflandscape_timing.cc
+        sed -i -e "s/quadratic<64>/${type}<${n}>/" wflandscape_timing.cc
+        make &>/dev/null
+        time ./wflandscape_timing 10000 0 0 0 1 0 .05 .05 123 1 > /dev/null
+    done
+done
+mv temp.cc wflandscape_timing.cc
+```
 The call is (on my laptop):
 ```
 time ./wflandscape_timing 10000 0 0 0 1 0 .05 .05 123 1 > /dev/null
