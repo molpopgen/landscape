@@ -10,3 +10,4 @@ clean:
 	rm -f *.o
 
 wflandscape.o: simtypes.hpp wfrules.hpp
+wflandscape_timing.o:  simtypes.hpp wfrules.hpp
