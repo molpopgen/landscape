@@ -161,9 +161,16 @@ struct WFLandscapeRules
     {
         using value_t = typename diploid_t::value;
         std::vector<value_t> possible_mates;
+		double p1x=boost::geometry::get<0>(parent1.v.first);
+		double p1y=boost::geometry::get<1>(parent1.v.first);
+		using point = typename diploid_t::point;
+		using box = boost::geometry::model::box<point>;
+		box region(point(p1x-radius/2.,p1y-radius/2.),point(p1x+radius/2.,p1y+radius/2.));
+		parental_rtree.query(boost::geometry::index::covered_by(region),std::back_inserter(possible_mates));
         //find all individuals in population whose Euclidiean distance
         //from parent1 is <= radius.  The "point" info fill up
         //the possible_mates vector.
+		/*
         parental_rtree.query(boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
             double p1x=boost::geometry::get<0>(parent1.v.first);
             double p1y=boost::geometry::get<1>(parent1.v.first);
@@ -173,6 +180,7 @@ struct WFLandscapeRules
             return euclid <= radius;
         }),
         std::back_inserter(possible_mates));
+		*/
         if(possible_mates.size()==1) return p1; //only possible mate was itself, so we self-fertilize
 
         //build lookup table of possible mates.
