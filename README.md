@@ -91,14 +91,15 @@ time ./wflandscape_timing 10000 0 0 0 1 0 .05 .05 123 1 > /dev/null
 
      time   options
 ---------   -----------------
-0m9.656s    linear<4>
-0m3.855s    linear<16>
-0m2.804s    linear<64>
-0m2.541s    linear<256>
-0m4.005s    quadratic<16>
-0m2.851s    quadratic<64>
-0m4.065s    rstar<16>
-0m3.293s    rstar<64>
+0m4.388s   quadratic<64>
+0m4.808s   quadratic<16>
+0m4.735s   rstar<64>
+0m5.080s   rstar<16>
+0m4.306s   linear<64>
+0m4.758s   linear<16>
+0m10.051s  linear<4>
+
+These differed more on a laptop, for some reason.
 
 Since [the introduction](http://www.boost.org/doc/libs/1_61_0/libs/geometry/doc/html/geometry/spatial_indexes/introduction.html) says that linear is fastest to insert
 but slowest to query, this suggests that *building* the tree is taking the longest.
