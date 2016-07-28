@@ -128,13 +128,11 @@ vector<csdiploid::value>:
 
      time   options
 ---------   -----------------
-0m5.384s    linear<256>
-0m5.434s    linear<64>
-0m6.812s    linear<4>
-0m5.316s    quadratic<64>
-0m5.360s    quadratic<16>
-0m5.471s    rstar<16>
-0m5.354s    rstar<64>
+0m5.380s	rstar<64>
+0m5.452s	rstar<16>
+0m5.478s	quadratic<16>
+0m5.338s	quadratic<64>
+0m5.858s	quadratic<128>
 
 Since [the introduction](http://www.boost.org/doc/libs/1_61_0/libs/geometry/doc/html/geometry/spatial_indexes/introduction.html) says that linear is fastest to insert
 but slowest to query, this suggests that *building* the tree is taking the longest.

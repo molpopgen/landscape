@@ -26,7 +26,7 @@ namespace bgi = boost::geometry::index;
 
 
 //typedefs to simplify life
-using rtree_type = bgi::rtree< landscape::csdiploid::value, bgi::rstar<64> >;
+using rtree_type = bgi::rtree< landscape::csdiploid::value, bgi::quadratic<64> >;
 using rules_type = landscape::WFLandscapeRules<rtree_type>;
 
 //Arbitrary model for fitness.

@@ -75,8 +75,8 @@ struct WFLandscapeRules
         template<typename T>
         inline result_type operator()(T const& v) const
         {
-            return result_type(v.value(), v.index());
-        }
+			return result_type(v.value().first,v.value().second);
+		}
     };
 
     //Get fitnesses for each diploid, tally current mean fitness.
@@ -94,9 +94,10 @@ struct WFLandscapeRules
     {
         if(!offspring_locations.empty())//then we've been through at least 1 generation...
         {
+			using point_t = typename dipcont_t::value_type::value::first_type;
             parental_rtree = rtree_type(offspring_locations | boost::adaptors::indexed()
-                                        | boost::adaptors::transformed(pair_maker<typename offspring_vec::value_type,typename offspring_vec::size_type>()));
-            offspring_locations.clear();
+                                        | boost::adaptors::transformed(pair_maker<point_t,std::size_t>()));
+			offspring_locations.clear();
         }
         offspring_locations.reserve(diploids.size());
         //set "dipindex to 0.
