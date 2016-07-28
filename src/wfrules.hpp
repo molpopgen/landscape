@@ -161,12 +161,12 @@ struct WFLandscapeRules
     {
         using value_t = typename diploid_t::value;
         std::vector<value_t> possible_mates;
-		/*
 		double p1x=boost::geometry::get<0>(parent1.v.first);
 		double p1y=boost::geometry::get<1>(parent1.v.first);
 		using point = typename diploid_t::point;
 		using box = boost::geometry::model::box<point>;
 		box region(point(p1x-radius,p1y-radius),point(p1x+radius,p1y+radius));
+		/*
 		parental_rtree.query(boost::geometry::index::covered_by(region),std::back_inserter(possible_mates));
 		*/
         //find all individuals in population whose Euclidiean distance
@@ -176,7 +176,9 @@ struct WFLandscapeRules
 		//http://stackoverflow.com/questions/22909171/boostgeometry-nearest-neighbors-using-a-circle,
 		//which shows that lambda expressions as query objects are just a lot slower...
 		//cout-debugging confirms that this is equivalent to the commented-out bit below:
-		parental_rtree.query(boost::geometry::index::satisfies([&parent1,this](const value_t & v) { 
+		parental_rtree.query(
+                boost::geometry::index::within(region) &&
+                boost::geometry::index::satisfies([&parent1,this](const value_t & v) { 
 				return boost::geometry::distance(v.first,parent1.v.first) <= radius;
 				}),std::back_inserter(possible_mates));
 		/*	

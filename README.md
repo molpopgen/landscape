@@ -72,8 +72,9 @@ Implementation details:
   explored.
 * There is a difference in how data are accessed in const and non-const contexts.  The use of get<X>() is what I'm
   referring to here--see the code...
-* __Disturbing:__ changing the rtree parameters affects the output _for the same random number seed_.  Definitely gotta
-  look into that!
+* Querying an rtree with a lambda predicate compares *all* pairs;
+    to avoid this restrict to a box as well, as discussed [here](http://stackoverflow.com/questions/22909171/boostgeometry-nearest-neighbors-using-a-circle) and done [here](https://gist.github.com/weidenrinde/89e835611721f0c1d907)
+* Changing the rtree parameters affects the output _for the same random number seed_, (probably) because it changes the order potential mates are returned.
 
 #### rtree notes
 
