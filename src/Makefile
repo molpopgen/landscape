@@ -1,4 +1,3 @@
-CXX=c++
 CXXFLAGS=-std=c++11 -O2 -Wall -W -DNDEBUG
 
 all: rtree_example.o rtree_wtf.o wflandscape.o wflandscape_timing.o
