@@ -26,7 +26,7 @@ namespace bgi = boost::geometry::index;
 
 
 //typedefs to simplify life
-using rtree_type = bgi::rtree< landscape::csdiploid::value, bgi::quadratic<16> >;
+using rtree_type = bgi::rtree< landscape::csdiploid::value, bgi::quadratic<64> >;
 using rules_type = landscape::WFLandscapeRules<rtree_type>;
 
 //Arbitrary model for fitness.
@@ -210,7 +210,7 @@ int main(int argc, char ** argv)
      * removed, but that is optional--fwdpp has a few variants of that
      * function
      */
-    for( ; generation < 10*N ; ++generation )
+    for( ; generation < 10 ; ++generation )
     {
         double wbar = KTfwd::experimental::sample_diploid(rng.get(),
                       pop.gametes,

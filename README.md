@@ -74,3 +74,37 @@ Implementation details:
   referring to here--see the code...
 * __Disturbing:__ changing the rtree parameters affects the output _for the same random number seed_.  Definitely gotta
   look into that!
+
+#### rtree notes
+
+* The main choice in constructing an rtree is the splitting algorithm, either `linear`, `quadratic`, or `rstar`. 
+    These are *not* used when *constructing* the tree from a large number of initial points; as [mentioned here](http://lists.boost.org/boost-users/2014/10/83212.php),
+    when first constructing the tree from e.g. an iterator, a better algorithm is used.
+
+**Results:**
+
+`wflanscape_timing.cc` was modified so that it runs for 10 generations (not $10N$).
+The call is (on my laptop):
+```
+time ./wflandscape_timing 10000 0 0 0 1 0 .05 .05 123 1 > /dev/null
+```
+
+     time   options
+---------   -----------------
+0m9.656s    linear<4>
+0m3.855s    linear<16>
+0m2.804s    linear<64>
+0m2.541s    linear<256>
+0m4.005s    quadratic<16>
+0m2.851s    quadratic<64>
+0m4.065s    rstar<16>
+0m3.293s    rstar<64>
+
+Since [the introduction](http://www.boost.org/doc/libs/1_61_0/libs/geometry/doc/html/geometry/spatial_indexes/introduction.html) says that linear is fastest to insert
+but slowest to query, this suggests that *building* the tree is taking the longest.
+a larger maximum number of items per node may be more efficient for the same reason.
+The same page says that the `packing` algorithm to build the tree from an iterator is *much* faster than any of these,
+and [this page](http://www.boost.org/doc/libs/1_61_0/libs/geometry/doc/html/geometry/spatial_indexes/creation_and_modification.html#geometry.spatial_indexes.creation_and_modification.additional_interface)
+gives various ways to do this.
+The only example that does this seems to be [this one](http://www.boost.org/doc/libs/1_61_0/libs/geometry/doc/html/geometry/spatial_indexes/rtree_examples/range_adaptors.html),
+but I don't know to put the points `pop.diploids[i].v` into an iterator to take advantage of this.
