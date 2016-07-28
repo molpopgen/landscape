@@ -170,18 +170,6 @@ struct WFLandscapeRules
 				boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
 					return boost::geometry::distance(v.first,parent1.v.first)<=radius;
 					}),std::back_inserter(possible_mates));
-        //find all individuals in population whose Euclidiean distance
-        //from parent1 is <= radius.  The "point" info fill up
-        //the possible_mates vector.
-		//This is a more "idiomatic" version based on
-		//http://stackoverflow.com/questions/22909171/boostgeometry-nearest-neighbors-using-a-circle,
-		//which shows that lambda expressions as query objects are just a lot slower...
-		//cout-debugging confirms that this is equivalent to the commented-out bit below:
-		/*
-		parental_rtree.query(boost::geometry::index::satisfies([&parent1,this](const value_t & v) { 
-				return boost::geometry::distance(v.first,parent1.v.first) <= radius;
-				}),std::back_inserter(possible_mates));
-		*/
 		/*	
         parental_rtree.query(boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
             double p1x=boost::geometry::get<0>(parent1.v.first);
