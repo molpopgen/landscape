@@ -73,8 +73,7 @@ struct WFLandscapeRules
            const fitness_func & ff)
     {
         // new generation marker
-        std::cout << "-------------------\n"
-
+        std::cout << "---------\n";
         //move the offspring rtree into the parental rtree
         parental_rtree = std::move(offspring_rtree);
         //re-initialize offspring rtree
@@ -138,6 +137,7 @@ struct WFLandscapeRules
     inline size_t pick2(const gsl_rng * r, const size_t & p1, const double & ,
                         diploid_t & parent1, const gcont_t &, const mcont_t &)
     {
+        size_t p2;
         using value_t = typename diploid_t::value;
         std::vector<value_t> possible_mates;
         //find all individuals in population whose Euclidiean distance
@@ -152,29 +152,38 @@ struct WFLandscapeRules
             return euclid <= radius;
         }),
         std::back_inserter(possible_mates));
-        if(possible_mates.size()==1) return p1; //only possible mate was itself, so we self-fertilize
+        if(possible_mates.size()==1) 
+        {
+            p2=p1; //only possible mate was itself, so we self-fertilize
+        } 
+        else 
+        {
+            //build lookup table of possible mates.
+            //selfing still allowed...
+            if(fitnesses_temp.size() < possible_mates.size()) fitnesses_temp.resize(possible_mates.size());
+            double sumw=0.0;
+            for(std::size_t i = 0 ; i < possible_mates.size() ;++i)
+            {
+                fitnesses_temp[i]=fitnesses[possible_mates[i].second];
+                sumw += fitnesses_temp[i];
+            }
+            double uni = gsl_ran_flat(r,0.0,sumw);
+            double sum=0.0;
+            for(std::size_t i=0;i<possible_mates.size();++i)
+            {
+                sum+=fitnesses_temp[i];
+                if(uni < sum) 
+                {
+                    p2=possible_mates[i].second;
+                }
+            }
+            //should never (?) get here...
+            //return possible_mates.back().second;
+        }
 
-        //build lookup table of possible mates.
-        //selfing still allowed...
-        if(fitnesses_temp.size() < possible_mates.size()) fitnesses_temp.resize(possible_mates.size());
-		double sumw=0.0;
-		for(std::size_t i = 0 ; i < possible_mates.size() ;++i)
-		{
-			fitnesses_temp[i]=fitnesses[possible_mates[i].second];
-			sumw += fitnesses_temp[i];
-		}
-		double uni = gsl_ran_flat(r,0.0,sumw);
-		double sum=0.0;
-		for(std::size_t i=0;i<possible_mates.size();++i)
-		{
-			sum+=fitnesses_temp[i];
-			if(uni < sum) 
-			{
-				return possible_mates[i].second;
-			}
-		}
-		//should never (?) get here...
-        return possible_mates.back().second;
+        std::cout << p1 << " " << p2 << "\n";
+
+        return p2;
 
 		/* This next code uses the GSL lookup idea
 		 * to pick mates according to fitness.
