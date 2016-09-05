@@ -6,7 +6,7 @@
  * will require some custom code b/c fwdpp doesn't currently
  * provide support for such life cycles
  */
-#include "simtypes.hpp"
+#include "simtypes_spatial.hpp"
 #include "wfrules_pedigree.hpp"
 #include <cassert> //fwdpp has this missing in one of its headers...
 #include <cstdlib>
@@ -135,7 +135,11 @@ int main(int argc, char ** argv)
             x = gsl_ran_flat(rng.get(),0.5,1);
             y = gsl_ran_flat(rng.get(),0.,0.5);
         }
-        pop.diploids[i].v = landscape::csdiploid::value(std::make_pair(landscape::csdiploid::point(x,y),i));
+        pop.diploids[i].v = landscape::csdiploid::value(
+                std::make_pair(landscape::csdiploid::point(x,y),
+                    std::make_pair(i,
+                        std::make_pair(0,0) )
+                    ));
         rtree.insert(pop.diploids[i].v);
     }
 
@@ -209,6 +213,7 @@ int main(int argc, char ** argv)
      * removed, but that is optional--fwdpp has a few variants of that
      * function
      */
+    std::cout << "gen dip x y p1 p2\n";
     for( ; generation < 10*N ; ++generation )
     {
         double wbar = KTfwd::experimental::sample_diploid(rng.get(),
@@ -227,6 +232,15 @@ int main(int argc, char ** argv)
                       rules);
         //Take any fixed variants, transfer them out of population and into fixation time containers
         KTfwd::update_mutations(pop.mutations,pop.fixations,pop.fixation_times,pop.mut_lookup,pop.mcounts,generation,2*N);
+        // do some output
+        for(std::size_t i=0; i<pop.diploids.size(); ++i)
+        {
+            auto x = pop.diploids[i].v.first.get<0>();
+            auto y = pop.diploids[i].v.first.get<1>();
+            auto p1 = pop.diploids[i].v.second.second.first;
+            auto p2 = pop.diploids[i].v.second.second.second;
+            std::cout << generation << ' ' << i << ' ' << x << ' ' << y << ' ' << p1 << ' ' << p2 << '\n';
+        }
     }
     if(!format)
     {
@@ -235,38 +249,17 @@ int main(int argc, char ** argv)
         //the position + s for each mutation on each chromosome,
         //plus its coordinate.  Output will be "tidy",
         //e.g. ready for dplyr.
-        std::cout << "dip x y chrom pos s\n";
+        /*
+        std::cout << "dip x y p1 p2\n";
         for(std::size_t i=0; i<pop.diploids.size(); ++i)
         {
             auto x = pop.diploids[i].v.first.get<0>();
             auto y = pop.diploids[i].v.first.get<1>();
-            if(pop.gametes[pop.diploids[i].first].smutations.empty())
-            {
-                std::cout << i << ' ' << x << ' ' << y << " 0 " <<"NA NA" << '\n';
-            }
-            else
-            {
-                for(const auto & m : pop.gametes[pop.diploids[i].first].smutations)
-                {
-                    std::cout << i << ' ' << x << ' ' << y << " 0 "
-                              << pop.mutations[m].pos << ' '
-                              << pop.mutations[m].s << '\n';
-                }
-            }
-            if(pop.gametes[pop.diploids[i].second].smutations.empty())
-            {
-                std::cout << i << ' ' << x << ' ' << y << " 1 " << "NA NA" << '\n';
-            }
-            else
-            {
-                for(const auto & m : pop.gametes[pop.diploids[i].second].smutations)
-                {
-                    std::cout << i << ' ' << x << ' ' << y << " 1 "
-                              << pop.mutations[m].pos << ' '
-                              << pop.mutations[m].s << '\n';
-                }
-            }
+            auto p1 = pop.diploids[i].v.second.second.first;
+            auto p2 = pop.diploids[i].v.second.second.second;
+            std::cout << i << ' ' << x << ' ' << y << ' ' << p1 << ' ' << p2 << '\n';
         }
+        */
     }
     else
     {

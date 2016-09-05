@@ -72,8 +72,6 @@ struct WFLandscapeRules
            const mcont_t & mutations,
            const fitness_func & ff)
     {
-        // new generation marker
-        std::cout << "---------\n";
         //move the offspring rtree into the parental rtree
         parental_rtree = std::move(offspring_rtree);
         //re-initialize offspring rtree
@@ -100,7 +98,7 @@ struct WFLandscapeRules
             bool found=false;
             for(auto & vi : v)
             {
-                if(vi.second==diploids[i].v.second) found = true;
+                if(vi.second.first==diploids[i].v.second.first) found = true;
             }
             assert(found);
         }
@@ -164,7 +162,7 @@ struct WFLandscapeRules
             double sumw=0.0;
             for(std::size_t i = 0 ; i < possible_mates.size() ;++i)
             {
-                fitnesses_temp[i]=fitnesses[possible_mates[i].second];
+                fitnesses_temp[i]=fitnesses[possible_mates[i].second.first];
                 sumw += fitnesses_temp[i];
             }
             double uni = gsl_ran_flat(r,0.0,sumw);
@@ -174,14 +172,15 @@ struct WFLandscapeRules
                 sum+=fitnesses_temp[i];
                 if(uni < sum) 
                 {
-                    p2=possible_mates[i].second;
+                    p2=possible_mates[i].second.first;
                 }
             }
             //should never (?) get here...
             //return possible_mates.back().second;
         }
 
-        std::cout << p1 << " " << p2 << "\n";
+        // hackily output pedigree
+        // std::cout << p1 << " " << p2 << "\n";
 
         return p2;
 
@@ -225,7 +224,10 @@ struct WFLandscapeRules
         //b/c fwdpp guarantees filling diploids from 0 to N-1,
         //we use dipindex here to record where this offspring is
         //in the diploids container.
-        offspring.v = typename diploid_t::value(std::make_pair(typename diploid_t::point(x,y),dipindex++));
+        offspring.v = typename diploid_t::value(std::make_pair(typename diploid_t::point(x,y),
+                    std::make_pair( dipindex++,
+                        std::make_pair(parent1.v.second.first,parent2.v.second.first)
+                    ) ));
         offspring_rtree.insert(offspring.v);
     }
 };
