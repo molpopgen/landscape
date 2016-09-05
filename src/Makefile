@@ -1,10 +1,11 @@
 CXXFLAGS=-std=c++11 -O2 -Wall -W -DNDEBUG
 
-all: rtree_example.o rtree_wtf.o wflandscape.o wflandscape_pedigree.o
+all: rtree_example.o rtree_wtf.o wflandscape.o wflandscape_pedigree.o wflandscape_spatial_pedigree.o
 	$(CXX) $(CXXFLAGS) -o rtree_example rtree_example.o -lgsl -lgslcblas
 	$(CXX) $(CXXFLAGS) -o rtree_wtf rtree_wtf.o -lgsl -lgslcblas
 	$(CXX) $(CXXFLAGS) -o wflandscape wflandscape.o -lgsl -lgslcblas -lsequence -lpthread
 	$(CXX) $(CXXFLAGS) -o wflandscape_pedigree wflandscape_pedigree.o -lgsl -lgslcblas -lsequence -lpthread
+	$(CXX) $(CXXFLAGS) -o wflandscape_spatial_pedigree wflandscape_spatial_pedigree.o -lgsl -lgslcblas -lsequence -lpthread
 
 clean:
 	rm -f *.o
@@ -12,3 +13,5 @@ clean:
 wflandscape.o: simtypes.hpp wfrules.hpp
 
 wflandscape_pedigree.o: simtypes.hpp wfrules_pedigree.hpp
+
+wflandscape_spatial_pedigree.o: simtypes_spatial.hpp wfrules_spatial_pedigree.hpp
