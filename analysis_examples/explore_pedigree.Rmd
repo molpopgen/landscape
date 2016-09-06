@@ -1,0 +1,152 @@
+---
+title: "Simulating a Pedigree"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+fig.dim <- 5
+knitr::opts_chunk$set(fig.width=2*fig.dim,fig.align='center',echo=FALSE)
+```
+
+`wflandscape` can be used to simulate a pedigree from individuals in a square:
+```{r setup_params}
+
+run_wfl <- function (...) {
+    # these will be default parameter values
+    #   but anything passed in will be copied over
+    params <- modifyList( list(
+            "ngen" = 2,                      # number of generations to run for
+            "N" = 10,                        # total number of individuals
+            "theta" = 1000,                  # 4 N mu
+            "rho" = 1.0,                     # 4 N r
+            "s" = 0.1,                       # selection coefficient
+            "h" = 1.0,                       # dominance.  Fitnesses will be 1,1+sh,1+2s, so h=1=additive.
+            "mutrate_to_selected" = 1.0,     # mutation rate to selected variants
+            "radius" = 0.05,                 # Radius in which to search for mates.
+            "dispersal" = 0.02,              # std. deviation in offspring dispersal
+            "seed" =  floor(runif(1)*1e6),   # RNG seed.
+            "format" = 0                     # number of samples to output the genotypes of
+        ), list(...) )
+    # system2("../src/wflandscape_pedigree", unlist(params), stdout=TRUE)
+    read.table( pipe( paste( c("../src/wflandscape_pedigree", unlist(params)), collapse=' ') ) , sep=' ', header=TRUE )
+}
+
+#' Euclidean distance
+edist <- function (a,b) {
+    sqrt( rowSums((a[,c("x","y")]-b[,c("x","y")])^2) )
+}
+
+#' Sum, removing NAs
+sum.na <- function ( ... ) {
+    args <- list(...)
+    out <- numeric( length(args[[1]]) )
+    for (k in seq_along(args)) {
+        out <- out + ifelse( is.na(args[[k]]), 0, args[[k]] )
+    }
+    out
+}
+
+#' Find the number of paths up through the pedigree that pass through each individual
+ped_weights <- function (ped, init=rep(1,sum(ped$gen==max(ped$gen)))) {
+    w <- numeric(nrow(ped))
+    offspring <- which(  ped$gen==max(ped$gen) )
+    w[offspring] <- init
+    for (k in sort( unique(ped$gen), decreasing=TRUE )[-1] ) {
+        parents <- which( ped$gen==k )
+        p1.fac <- factor( ped$p1[offspring], levels=ped$dip[parents] )
+        p2.fac <- factor( ped$p2[offspring], levels=ped$dip[parents] )
+        w[ parents ] <- 0.5 * sum.na( tapply( w[offspring], p1.fac, sum  ) , tapply( w[offspring], p2.fac, sum  ) )
+        offspring <- parents
+    }
+    return(w)
+}
+
+#' return ped-structured df but with each row giving information about the first parent of the correp row in ped
+get_p1 <- function (ped) {
+    p1 <- ped[,c("gen","dip")]
+    p1$gen <- p1$gen-1L
+    p1$.ord <- 1:nrow(p1)
+    p1 <- merge( p1, ped, sort=FALSE, all.x=TRUE )
+    return( p1[p1$.ord,setdiff(colnames(p1),".ord")] )
+}
+
+#' same, for second parent
+get_p2 <- function (ped) {
+    p2 <- ped[,c("gen","dip")]
+    p2$gen <- p2$gen-1L
+    p2$.ord <- 1:nrow(p2)
+    p2 <- merge( p2, ped, sort=FALSE, all.x=TRUE )
+    return( p2[p2$.ord,setdiff(colnames(p2),".ord")] )
+}
+
+#' Get p{1,2}.d{x,y}, the displacements from each to their parent
+parent_displacements <- function (ped) {
+    p1 <- get_p1(ped)
+    p2 <- get_p2(ped)
+    cbind( 
+          p1.dx = ped$x - p1$x,
+          p1.dy = ped$y - p1$y,
+          p2.dx = ped$x - p2$x,
+          p2.dy = ped$y - p2$y )
+}
+
+```
+
+Run the simulation:
+```{r run_things}
+ped <- run_wfl(ngen=12,N=100)
+```
+
+Here are the parent-offspring displacements in each generation:
+```{r show_parents, fig.width=3.6*fig.dim}
+layout(t(1:3))
+for (k in sort(unique(ped$gen))[-1]) {
+    these <- subset(ped,gen==k)
+    those <- subset(ped,gen==(k-1))
+    mas <- those[these$p1+1L,]
+    pas <- those[these$p2+1L,]
+    plot( these[,c("x","y")], asp=1,
+         main=paste("generation",k), type='n',
+         xlim=c(0,1), ylim=c(0,1), 
+         xaxt='n', yaxt='n', xlab='', ylab='' )
+    text( these[,c("x","y")], labels=these$dip )
+    text( those[,c("x","y")], labels=those$dip, col='red' )
+    segments( x0=these$x, y0=these$y, x1=mas$x, y1=mas$y )
+    segments( x0=these$x, y0=these$y, x1=pas$x, y1=pas$y )
+}
+```
+
+Here is the distribution of parent-offspring displacement distances, by generation:
+```{r dispersal_dists, fig.width=3.6*fig.dim}
+layout(t(1:3))
+for (k in sort(unique(ped$gen))[-1]) {
+    these <- subset(ped,gen==k)
+    those <- subset(ped,gen==(k-1))
+    mas <- those[these$p1+1L,]
+    pas <- those[these$p2+1L,]
+    ma.dist <- edist( these, mas )
+    pa.dist <- edist( these, pas )
+
+    all.hist <- hist( c(ma.dist,pa.dist), plot=FALSE, breaks=20 )
+    hist(ma.dist, breaks=all.hist$breaks, col=adjustcolor("black",0.75),
+        xlab='distance apart', main=paste("generation",k) )
+    hist(pa.dist, breaks=all.hist$breaks, col=adjustcolor("red",0.75), add=TRUE )
+
+}
+```
+
+
+Now let's compare this to the distribution of parent-offspring displacement distances
+*from randomly sampled paths up the pedigree*.
+First, here's the distribution of expected fitness among the ancestors:
+```{r backwards_fitness}
+ped$w <- ped_weights(ped)
+matplot( apply(matrix( ped$w, ncol=length(unique(ped$gen)) ),2,sort), 
+        xlab='number of genomes in sample', ylab='number of ancestors', type='l' )
+```
+Now, we'll look at the parent-offspring distances, weighted by expected fitness.
+This time, wi'll just compare means.
+```{r backwards_dispersal_dists}
+
+```

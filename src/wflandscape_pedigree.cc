@@ -65,11 +65,12 @@ struct spatial_fitness
 
 int main(int argc, char ** argv)
 {
-    if(argc!=11)
+    if(argc!=12)
     {
         std::cerr << "Incorrect number of arguments.\n"
                   << "Usage:\n"
                   << argv[0] << ' '
+                  << "ngen "
                   << "N "
                   << "theta "
                   << "rho "
@@ -81,13 +82,14 @@ int main(int argc, char ** argv)
                   << "seed "
                   << "format\n"
                   << "\n"
-                  << "Note: format = 0 means list of diploids + selected mutations\n"
+                  << "Note: format = 0 means output pedigree as it goes along\n"
                   << "format = nsam > 0  = ms-style output of nsam diploids + their geographic locations\n"
 				  << "format = N = output info for whole population\n"
 				  << "format > N = bad bad bad\n";
         exit(0);
     }
     int argn = 1;
+    const unsigned ngen = atoi(argv[argn++]);
     const unsigned N = atoi(argv[argn++]);
     const double theta = atof(argv[argn++]);
     const double rho = atof(argv[argn++]);
@@ -213,8 +215,19 @@ int main(int argc, char ** argv)
      * removed, but that is optional--fwdpp has a few variants of that
      * function
      */
-    std::cout << "gen dip x y p1 p2\n";
-    for( ; generation < 10*N ; ++generation )
+    if(!format)
+    {
+        std::cout << "gen dip x y p1 p2\n";
+        for(std::size_t i=0; i<pop.diploids.size(); ++i)
+        {
+            auto x = pop.diploids[i].v.first.get<0>();
+            auto y = pop.diploids[i].v.first.get<1>();
+            auto p1 = pop.diploids[i].v.second.second.first;
+            auto p2 = pop.diploids[i].v.second.second.second;
+            std::cout << generation << ' ' << i << ' ' << x << ' ' << y << ' ' << p1 << ' ' << p2 << '\n';
+        }
+    }
+    for( ; generation < ngen ; ++generation )
     {
         double wbar = KTfwd::experimental::sample_diploid(rng.get(),
                       pop.gametes,
@@ -232,36 +245,20 @@ int main(int argc, char ** argv)
                       rules);
         //Take any fixed variants, transfer them out of population and into fixation time containers
         KTfwd::update_mutations(pop.mutations,pop.fixations,pop.fixation_times,pop.mut_lookup,pop.mcounts,generation,2*N);
-        // do some output
-        for(std::size_t i=0; i<pop.diploids.size(); ++i)
+        if(!format)
         {
-            auto x = pop.diploids[i].v.first.get<0>();
-            auto y = pop.diploids[i].v.first.get<1>();
-            auto p1 = pop.diploids[i].v.second.second.first;
-            auto p2 = pop.diploids[i].v.second.second.second;
-            std::cout << generation << ' ' << i << ' ' << x << ' ' << y << ' ' << p1 << ' ' << p2 << '\n';
+            // do some output
+            for(std::size_t i=0; i<pop.diploids.size(); ++i)
+            {
+                auto x = pop.diploids[i].v.first.get<0>();
+                auto y = pop.diploids[i].v.first.get<1>();
+                auto p1 = pop.diploids[i].v.second.second.first;
+                auto p2 = pop.diploids[i].v.second.second.second;
+                std::cout << generation+1 << ' ' << i << ' ' << x << ' ' << y << ' ' << p1 << ' ' << p2 << '\n';
+            }
         }
     }
-    if(!format)
-    {
-        //At this point, we would do some analysis...
-        //Here, we'll print out each diploid, and
-        //the position + s for each mutation on each chromosome,
-        //plus its coordinate.  Output will be "tidy",
-        //e.g. ready for dplyr.
-        /*
-        std::cout << "dip x y p1 p2\n";
-        for(std::size_t i=0; i<pop.diploids.size(); ++i)
-        {
-            auto x = pop.diploids[i].v.first.get<0>();
-            auto y = pop.diploids[i].v.first.get<1>();
-            auto p1 = pop.diploids[i].v.second.second.first;
-            auto p2 = pop.diploids[i].v.second.second.second;
-            std::cout << i << ' ' << x << ' ' << y << ' ' << p1 << ' ' << p2 << '\n';
-        }
-        */
-    }
-    else
+    if(format)
     {
         /* Sample "format" random diploids.  We want to get their
          * geographic info, so we'll randomly choose individuals
