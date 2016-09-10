@@ -25,7 +25,7 @@ struct csdiploid : public KTfwd::tags::custom_diploid_t
     //this diploid is stored in the population.
     //So, this size_t has a value from 0 to N_t-1,
     //where N_t is pop size in generation t.
-    using value = std::pair<point, std::size_t>;
+    using value = std::pair<point, std::pair<std::size_t, std::pair<std::size_t, std::size_t> > >;
     using first_type = std::size_t;
     using second_type = std::size_t;
     first_type first; //first gamete
@@ -33,13 +33,27 @@ struct csdiploid : public KTfwd::tags::custom_diploid_t
     value v;           //location in space & index in population
     csdiploid() noexcept : v(std::make_pair(point(std::numeric_limits<double>::quiet_NaN(),
                                                 std::numeric_limits<double>::quiet_NaN()),
-                                                std::numeric_limits<std::size_t>::max()))
+                                                std::make_pair( 
+                                                    std::numeric_limits<std::size_t>::max(),
+                                                    std::make_pair( 
+                                                        std::numeric_limits<std::size_t>::max(),
+                                                        std::numeric_limits<std::size_t>::max()
+                                                    )
+                                                )
+                                        ) )
     {
     }
     csdiploid(std::size_t i,std::size_t j) : first(i),second(j),
         v(std::make_pair(point(std::numeric_limits<double>::quiet_NaN(),
                                std::numeric_limits<double>::quiet_NaN()),
-                         std::numeric_limits<std::size_t>::max()))
+                        std::make_pair( 
+                             std::numeric_limits<std::size_t>::max(),
+                            std::make_pair( 
+                                 std::numeric_limits<std::size_t>::max(),
+                                 std::numeric_limits<std::size_t>::max()
+                                )
+                         )
+                    ) )
     {
     }
 };

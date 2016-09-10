@@ -95,8 +95,9 @@ struct WFLandscapeRules
         if(!offspring_locations.empty())//then we've been through at least 1 generation...
         {
 			using point_t = typename dipcont_t::value_type::value::first_type;
+            using self_parents_t = std::pair<std::size_t, std::pair<std::size_t, std::size_t> >;
             parental_rtree = rtree_type(offspring_locations | boost::adaptors::indexed()
-                                        | boost::adaptors::transformed(pair_maker<point_t,std::size_t>()));
+                                        | boost::adaptors::transformed(pair_maker<point_t,self_parents_t>()));
 			offspring_locations.clear();
         }
         offspring_locations.reserve(diploids.size());
@@ -189,7 +190,7 @@ struct WFLandscapeRules
         double sumw=0.0;
         for(std::size_t i = 0 ; i < possible_mates.size() ; ++i)
         {
-            fitnesses_temp[i]=fitnesses[possible_mates[i].second];
+            fitnesses_temp[i]=fitnesses[possible_mates[i].second.first];
             sumw += fitnesses_temp[i];
         }
         double uni = gsl_ran_flat(r,0.0,sumw);
@@ -199,11 +200,11 @@ struct WFLandscapeRules
             sum+=fitnesses_temp[i];
             if(uni < sum)
             {
-                return possible_mates[i].second;
+                return possible_mates[i].second.first;
             }
         }
         //should never (?) get here...
-        return possible_mates.back().second;
+        return possible_mates.back().second.first;
 
         /* This next code uses the GSL lookup idea
          * to pick mates according to fitness.
@@ -218,10 +219,10 @@ struct WFLandscapeRules
         //    //xy coords AND there it is in diploids,
         //    //and thus in fitnesses.
         //    //(see simtypes.hpp)
-        //    fitnesses_temp[i]=fitnesses[possible_mates[i].second];
+        //    fitnesses_temp[i]=fitnesses[possible_mates[i].second.first];
         //}
         //lookup2 = KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr(gsl_ran_discrete_preproc(possible_mates.size(),fitnesses_temp.data()));
-        //return possible_mates[gsl_ran_discrete(r,lookup2.get())].second;
+        //return possible_mates[gsl_ran_discrete(r,lookup2.get())].second.first;
     }
 
     //! \brief Update some property of the offspring based on properties of the parents
@@ -245,7 +246,10 @@ struct WFLandscapeRules
         //b/c fwdpp guarantees filling diploids from 0 to N-1,
         //we use dipindex here to record where this offspring is
         //in the diploids container.
-        offspring.v = typename diploid_t::value(std::make_pair(typename diploid_t::point(x,y),dipindex++));
+        offspring.v = typename diploid_t::value(std::make_pair(typename diploid_t::point(x,y),
+                    std::make_pair( dipindex++,
+                        std::make_pair(parent1.v.second.first,parent2.v.second.first)
+                    ) ));
         offspring_locations.push_back(offspring.v);
     }
 };
