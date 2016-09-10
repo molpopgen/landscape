@@ -92,12 +92,21 @@ struct WFLandscapeRules
            const mcont_t & mutations,
            const fitness_func & ff)
     {
+        // stuff to count number of neighbors
+        using diploid_t = typename dipcont_t::value_type;
+		double p1x;
+		double p1y;
+		diploid_t parent1;
+		size_t num_neighbs;
+        using value_t = typename diploid_t::value;
+		using point = typename diploid_t::point;
+		using box = boost::geometry::model::box<point>;
+        // 
         if(!offspring_locations.empty())//then we've been through at least 1 generation...
         {
-			using point_t = typename dipcont_t::value_type::value::first_type;
             using self_parents_t = std::pair<std::size_t, std::pair<std::size_t, std::size_t> >;
             parental_rtree = rtree_type(offspring_locations | boost::adaptors::indexed()
-                                        | boost::adaptors::transformed(pair_maker<point_t,self_parents_t>()));
+                                        | boost::adaptors::transformed(pair_maker<point,self_parents_t>()));
 			offspring_locations.clear();
         }
         offspring_locations.reserve(diploids.size());
@@ -135,7 +144,26 @@ struct WFLandscapeRules
         for(std::size_t i = 0 ; i < diploids.size() ; ++i)
         {
             gametes[diploids[i].first].n=gametes[diploids[i].second].n=0; //set gamete counts to zero!!!!!
-            fitnesses[i]=ff(diploids[i],gametes,mutations); //calc fitness of i-th diploid
+            // find number of neighbors
+			parent1=diploids[i];
+            p1x=boost::geometry::get<1>(diploids[i].v.first);
+            p1y=boost::geometry::get<1>(diploids[i].v.first);
+            box region(point(p1x-radius,p1y-radius),point(p1x+radius,p1y+radius));
+			auto neighbs = boost::make_iterator_range(boost::geometry::index::qbegin(parental_rtree,
+						boost::geometry::index::covered_by(region) &&
+						boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
+							   return boost::geometry::distance(v.first,parent1.v.first)<=radius;
+								   }) )
+						, {});
+			num_neighbs = boost::distance(neighbs);  // how many are within the box
+			//num_neighbs = std::count_if(neighbs.begin(), neighbs.end(), 
+			//				boost::geometry::index::covered_by(region) &&
+            //                boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
+            //                       return boost::geometry::distance(v.first,parent1.v.first)<=radius;
+            //                           }) ); 
+
+			// fitness goes down with number of neighbors
+            fitnesses[i]=ff(diploids[i],gametes,mutations)/num_neighbs; //calc fitness of i-th diploid
             wbar+=fitnesses[i]; //keep track of mean fitness
         }
         wbar /= double(diploids.size());
@@ -167,10 +195,10 @@ struct WFLandscapeRules
 		using point = typename diploid_t::point;
 		using box = boost::geometry::model::box<point>;
 		box region(point(p1x-radius,p1y-radius),point(p1x+radius,p1y+radius));
-		parental_rtree.query(boost::geometry::index::covered_by(region) &&
-				boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
-					return boost::geometry::distance(v.first,parent1.v.first)<=radius;
-					}),std::back_inserter(possible_mates));
+               parental_rtree.query(boost::geometry::index::covered_by(region) &&
+                               boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
+                                       return boost::geometry::distance(v.first,parent1.v.first)<=radius;
+                                       }),std::back_inserter(possible_mates));
 		/*	
         parental_rtree.query(boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
             double p1x=boost::geometry::get<0>(parent1.v.first);
