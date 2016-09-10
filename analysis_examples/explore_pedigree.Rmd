@@ -62,23 +62,18 @@ ped_weights <- function (ped, init=rep(1,sum(ped$gen==max(ped$gen)))) {
     return(w)
 }
 
-#' return ped-structured df but with each row giving information about the first parent of the correp row in ped
-get_p1 <- function (ped) {
-    p1 <- ped[,c("gen","dip")]
+#' return ped-structured df but with each row giving information about the parent of the correp row in ped
+get_p <- function (ped,p) {
+    p1 <- ped[,c("gen",p)]
+    colnames(p1) <- c("gen","dip")
     p1$gen <- p1$gen-1L
     p1$.ord <- 1:nrow(p1)
     p1 <- merge( p1, ped, sort=FALSE, all.x=TRUE )
-    return( p1[p1$.ord,setdiff(colnames(p1),".ord")] )
+    return( p1[order(p1$.ord),setdiff(colnames(p1),".ord")] )
 }
 
-#' same, for second parent
-get_p2 <- function (ped) {
-    p2 <- ped[,c("gen","dip")]
-    p2$gen <- p2$gen-1L
-    p2$.ord <- 1:nrow(p2)
-    p2 <- merge( p2, ped, sort=FALSE, all.x=TRUE )
-    return( p2[p2$.ord,setdiff(colnames(p2),".ord")] )
-}
+get_p1 <- function (ped) { get_p( ped, "p1" ) }
+get_p2 <- function (ped) { get_p( ped, "p2" ) }
 
 #' Get p{1,2}.d{x,y}, the displacements from each to their parent
 parent_displacements <- function (ped) {

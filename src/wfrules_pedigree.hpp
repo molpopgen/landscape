@@ -5,6 +5,11 @@
 #include <fwdpp/internal/gsl_discrete.hpp>
 #include <fwdpp/type_traits.hpp>
 #include <boost/geometry/index/rtree.hpp>
+// Boost.Range
+#include <boost/range.hpp>
+// adaptors
+#include <boost/range/adaptor/indexed.hpp>
+#include <boost/range/adaptor/transformed.hpp>
 
 namespace landscape
 {
@@ -43,7 +48,11 @@ struct WFLandscapeRules
     //These are smart pointer wrappers around
     //gsl_ran_discrete_t
     KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr lookup,lookup2;
-    rtree_type parental_rtree,offspring_rtree;
+    rtree_type parental_rtree;
+    using rtree_type_value_t = typename rtree_type::value_type;
+    using offspring_vec = std::vector<rtree_type_value_t>;
+    offspring_vec offspring_locations;
+
     //"Constructor" function initialized the object.
     //We need an initial rtree, the "mating radius",
     //and the dispersal radius.  The initial rtree
@@ -54,10 +63,21 @@ struct WFLandscapeRules
         fitnesses(std::vector<double>()),
         lookup(KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr(nullptr)),
         lookup2(KTfwd::fwdpp_internal::gsl_ran_discrete_t_ptr(nullptr)),
-        parental_rtree(rtree_type()),
-        offspring_rtree(std::move(r)) //we will move the initial rtree into the rtree for offspring
+        parental_rtree(std::move(r)), //move construct from the input data
+        offspring_locations(std::vector<rtree_type_value_t>())
     {
     }
+    //Taken from http://www.boost.org/doc/libs/1_61_0/libs/geometry/doc/html/geometry/spatial_indexes/rtree_examples/range_adaptors.html
+    template <typename First, typename Second>
+    struct pair_maker
+    {
+        typedef std::pair<First, Second> result_type;
+        template<typename T>
+        inline result_type operator()(T const& v) const
+        {
+			return result_type(v.value().first,v.value().second);
+		}
+    };
 
     //Get fitnesses for each diploid, tally current mean fitness.
     //Create fast lookup table for individuals based on fitness
@@ -72,10 +92,14 @@ struct WFLandscapeRules
            const mcont_t & mutations,
            const fitness_func & ff)
     {
-        //move the offspring rtree into the parental rtree
-        parental_rtree = std::move(offspring_rtree);
-        //re-initialize offspring rtree
-        offspring_rtree=rtree_type();
+        if(!offspring_locations.empty())//then we've been through at least 1 generation...
+        {
+			using point_t = typename dipcont_t::value_type::value::first_type;
+            parental_rtree = rtree_type(offspring_locations | boost::adaptors::indexed()
+                                        | boost::adaptors::transformed(pair_maker<point_t,std::size_t>()));
+			offspring_locations.clear();
+        }
+        offspring_locations.reserve(diploids.size());
         //set "dipindex to 0.
         dipindex=0;
         //Debug loop.  Will not be executed if compiled
@@ -98,7 +122,7 @@ struct WFLandscapeRules
             bool found=false;
             for(auto & vi : v)
             {
-                if(vi.second.first==diploids[i].v.second.first) found = true;
+                if(vi.second==diploids[i].v.second) found = true;
             }
             assert(found);
         }
@@ -135,12 +159,18 @@ struct WFLandscapeRules
     inline size_t pick2(const gsl_rng * r, const size_t & p1, const double & ,
                         diploid_t & parent1, const gcont_t &, const mcont_t &)
     {
-        size_t p2;
         using value_t = typename diploid_t::value;
         std::vector<value_t> possible_mates;
-        //find all individuals in population whose Euclidiean distance
-        //from parent1 is <= radius.  The "point" info fill up
-        //the possible_mates vector.
+		double p1x=boost::geometry::get<0>(parent1.v.first);
+		double p1y=boost::geometry::get<1>(parent1.v.first);
+		using point = typename diploid_t::point;
+		using box = boost::geometry::model::box<point>;
+		box region(point(p1x-radius,p1y-radius),point(p1x+radius,p1y+radius));
+		parental_rtree.query(boost::geometry::index::covered_by(region) &&
+				boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
+					return boost::geometry::distance(v.first,parent1.v.first)<=radius;
+					}),std::back_inserter(possible_mates));
+		/*	
         parental_rtree.query(boost::geometry::index::satisfies([&parent1,this](const value_t & v) {
             double p1x=boost::geometry::get<0>(parent1.v.first);
             double p1y=boost::geometry::get<1>(parent1.v.first);
@@ -150,46 +180,37 @@ struct WFLandscapeRules
             return euclid <= radius;
         }),
         std::back_inserter(possible_mates));
-        if(possible_mates.size()==1) 
+        */
+		if(possible_mates.size()==1) return p1; //only possible mate was itself, so we self-fertilize
+
+        //build lookup table of possible mates.
+        //selfing still allowed...
+        if(fitnesses_temp.size() < possible_mates.size()) fitnesses_temp.resize(possible_mates.size());
+        double sumw=0.0;
+        for(std::size_t i = 0 ; i < possible_mates.size() ; ++i)
         {
-            p2=p1; //only possible mate was itself, so we self-fertilize
-        } 
-        else 
-        {
-            //build lookup table of possible mates.
-            //selfing still allowed...
-            if(fitnesses_temp.size() < possible_mates.size()) fitnesses_temp.resize(possible_mates.size());
-            double sumw=0.0;
-            for(std::size_t i = 0 ; i < possible_mates.size() ;++i)
-            {
-                fitnesses_temp[i]=fitnesses[possible_mates[i].second.first];
-                sumw += fitnesses_temp[i];
-            }
-            double uni = gsl_ran_flat(r,0.0,sumw);
-            double sum=0.0;
-            for(std::size_t i=0;i<possible_mates.size();++i)
-            {
-                sum+=fitnesses_temp[i];
-                if(uni < sum) 
-                {
-                    p2=possible_mates[i].second.first;
-                }
-            }
-            //should never (?) get here...
-            //return possible_mates.back().second;
+            fitnesses_temp[i]=fitnesses[possible_mates[i].second.first];
+            sumw += fitnesses_temp[i];
         }
+        double uni = gsl_ran_flat(r,0.0,sumw);
+        double sum=0.0;
+        for(std::size_t i=0; i<possible_mates.size(); ++i)
+        {
+            sum+=fitnesses_temp[i];
+            if(uni < sum)
+            {
+                return possible_mates[i].second.first;
+            }
+        }
+        //should never (?) get here...
+        return possible_mates.back().second.first;
 
-        // hackily output pedigree
-        // std::cout << p1 << " " << p2 << "\n";
-
-        return p2;
-
-		/* This next code uses the GSL lookup idea
-		 * to pick mates according to fitness.
-		 * This is slower than the above, taking another
-		 * O(k) step to preprocess...
-		 */
-		//build another one of these fast fitness lookups
+        /* This next code uses the GSL lookup idea
+         * to pick mates according to fitness.
+         * This is slower than the above, taking another
+         * O(k) step to preprocess...
+         */
+        //build another one of these fast fitness lookups
         //and return a value from it.
         //for(std::size_t i=0; i<possible_mates.size(); ++i)
         //{
@@ -228,7 +249,7 @@ struct WFLandscapeRules
                     std::make_pair( dipindex++,
                         std::make_pair(parent1.v.second.first,parent2.v.second.first)
                     ) ));
-        offspring_rtree.insert(offspring.v);
+        offspring_locations.push_back(offspring.v);
     }
 };
 }
