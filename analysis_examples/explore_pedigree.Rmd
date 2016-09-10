@@ -28,8 +28,8 @@ run_wfl <- function (...) {
             "seed" =  floor(runif(1)*1e6),   # RNG seed.
             "format" = 0                     # number of samples to output the genotypes of
         ), list(...) )
-    # system2("../src/wflandscape_pedigree", unlist(params), stdout=TRUE)
-    read.table( pipe( paste( c("../src/wflandscape_pedigree", unlist(params)), collapse=' ') ) , sep=' ', header=TRUE )
+    # system2("../src/wflandscape", unlist(params), stdout=TRUE)
+    read.table( pipe( paste( c("../src/wflandscape", unlist(params)), collapse=' ') ) , sep=' ', header=TRUE )
 }
 
 #' Euclidean distance
